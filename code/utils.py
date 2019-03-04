@@ -3,7 +3,7 @@ from random import randrange, random
 
 def bbox_iou(bboxA, bboxB):
     # compute the intersection over union of two bboxes
-    # I've adapted this code from the M1. The function expects [tly, tlx, width, height],
+    # I've adapted this code from the M1 base code. The function expects [tly, tlx, width, height],
     # where tl indicates the top left corner of the box.
     bboxA[2] = bboxA[0] + bboxA[2]
     bboxA[3] = bboxA[1] + bboxA[3]
@@ -41,7 +41,9 @@ def get_gt_bboxes(discard_probability=0.1, noise_range=35):
         lines = f.readlines()
         bboxes = dict()
         bboxes_noisy = dict()
+        num_of_instances = 0
         for line in lines:
+            num_of_instances += 1
             line = (line.split(','))
             if line[0] in bboxes.keys():
                 bboxes[line[0]].append([int(elem) for elem in line[1:6]])
@@ -53,7 +55,7 @@ def get_gt_bboxes(discard_probability=0.1, noise_range=35):
                 else:
                     bboxes_noisy[line[0]] = [[int(elem) + randrange(-noise_range, noise_range) for elem in line[1:6]]]
 
-    return bboxes, bboxes_noisy
+    return bboxes, bboxes_noisy, num_of_instances
 
 
 

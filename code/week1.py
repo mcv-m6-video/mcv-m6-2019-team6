@@ -1,6 +1,8 @@
 import cv2
 import matplotlib.pyplot as plt
 import matplotlib.patches as pat
+import numpy as np
+
 from utils import bbox_iou, get_gt_bboxes
 
 
@@ -20,7 +22,7 @@ def show_bboxes(path, bboxes, bboxes_noisy):
         success, frame = capture.read()
         current_frame = int(capture.get(cv2.CAP_PROP_POS_FRAMES))
         print('frame: ', current_frame)
-        if current_frame < 218:  # skip the first frames without bboxes
+        if current_frame < 218:  # skip the firsts frames without bboxes
             continue
         plt.imshow(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
         if str(current_frame) in bboxes.keys():
@@ -41,28 +43,33 @@ def show_bboxes(path, bboxes, bboxes_noisy):
 
 
 def main():
-    bboxes, bboxes_noisy = get_gt_bboxes()
+    bboxes, bboxes_noisy, num_instances = get_gt_bboxes(discard_probability=0.1, noise_range=25)
     path = '../datasets/AICity_data/train/S03/c010/vdo.avi'
 
     show = False
     if show:
         show_bboxes(path, bboxes, bboxes_noisy)
 
-    TP = 0
-    FP = 0
-    FN = 0
-    for key in bboxes.keys():
-        for bbox in bboxes[key]:
-            if key not in bboxes_noisy.keys():
-                FN += 1
-            else:
-                scores = [bbox_iou(bbox[1:], bbox_noisy[1:]) for bbox_noisy in bboxes_noisy[key]]
-                max_score = max(scores)
-                if max_score > 0.5:
-                    TP += 1
+    thresholds = np.linspace(0.5, 1, 11)
+
+    TP = np.zeros(len(thresholds), dtype=int)
+    FP = np.zeros(len(thresholds), dtype=int)
+    for key in bboxes_noisy.keys():
+        for bbox_noisy in bboxes_noisy[key]:
+            scores = [bbox_iou(bbox_noisy[1:], bbox[1:]) for bbox in bboxes[key]]
+            max_score = max(scores)
+            for i, threshold in enumerate(thresholds):
+                if max_score > threshold:
+                    TP[i] += 1
                 else:
-                    FP += 1
-    print("TP:", str(TP), " FP: ", str(FP), " FN: ", str(FN))
+                    FP[i] += 1
+
+    FN = num_instances - (TP+FP)  # number of instances not detected
+    for i, threshold in enumerate(thresholds):
+        print("Threshold: %.2f:" % threshold, " TP:", str(TP[i]), " FP: ", str(FP[i]), " FN: ",
+              str(FN[i]), " (", str(FP[i]+TP[i]+FN[i]), " anotations)")
+
+
 
 if __name__ == '__main__':
     main()
