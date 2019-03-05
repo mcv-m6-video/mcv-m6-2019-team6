@@ -43,7 +43,7 @@ def show_bboxes(path, bboxes, bboxes_noisy):
     capture.release()
 
 
-def main():
+def f1_over_time():
     bboxes, bboxes_noisy, num_instances, dict_of_instances = get_gt_bboxes_task2(discard_probability=0.5, noise_range=25)
     path = '../datasets/AICity_data/train/S03/c010/vdo.avi'
 
@@ -138,6 +138,7 @@ def main():
 
     # t_axis = np.arange(0, largest_index+1, 1)
     t_axis = np.arange(200, 401, 1)
+
     #CHECK NUMBER OF FRAMES TO SHOW
     if len(t_axis)<len(sorted_f1):
         sorted_f1 = sorted_f1[t_axis[0]:t_axis[-1]+1]
@@ -148,21 +149,54 @@ def main():
     for idx in range(len(thresholds)):
         toPlot.clear()
         for whole_element in sorted_f1:
-            # print(whole_element[1][idx])
             toPlot.append(whole_element[1][idx])
         plt.plot(t_axis, toPlot)
 
 
-    # plt.plot(t_axis, sorted_f1[1])
+def iou_over_time():
+    bboxes, bboxes_noisy, num_instances = get_gt_bboxes(discard_probability=0.1, noise_range=25)
+    path = '../datasets/AICity_data/train/S03/c010/vdo.avi'
 
+    # show = False
+    # if show:
+    #     show_bboxes(path, bboxes, bboxes_noisy)
+    valid_scores = dict()
+    for key in bboxes_noisy.keys():
+        frame_scores = []
+        mean_score = 0
+        for bbox_noisy in bboxes_noisy[key]:
+            scores = [bbox_iou(bbox_noisy[1:], bbox[1:]) for bbox in bboxes[key]]
+            max_score = max(scores)
+            frame_scores.append(max_score)
+        mean_score = (sum(frame_scores))/float(len(frame_scores))
+        valid_scores[key] = mean_score
 
-    # FN = num_instances - (TP+FP)  # number of instances not detected
-    # for i, threshold in enumerate(thresholds):
-    #     print("Threshold: %.2f:" % threshold, " TP:", str(TP[i]), " FP: ", str(FP[i]), " FN: ",
-    #           str(FN[i]), " (", str(FP[i]+TP[i]+FN[i]), " anotations)")
+    largest_index = max(list(map(int,bboxes.keys())))
+    idxs_toComplete = np.arange(0, largest_index+1, 1)
 
+    for index in idxs_toComplete:
+        index = str(index)
+        if index not in valid_scores.keys():
+            valid_scores[index] = 0.0
+
+    sorted_iou = []
+    for key, value in valid_scores.items():
+        temp = [int(key), value]
+        sorted_iou.append(temp)
+    sorted_iou.sort(key=lambda l:l[0])
+
+    _, toPlot = zip(*sorted_iou)
+
+    # t_axis = np.arange(200, 401, 1)
+    t_axis = np.arange(0, largest_index+1, 1)
+
+    if len(t_axis)<len(toPlot):
+        toPlot = toPlot[t_axis[0]:t_axis[-1]+1]
+
+    plt.plot(t_axis, toPlot)
 
 
 if __name__ == '__main__':
-    main()
+    # f1_over_time()
+    iou_over_time()
 
