@@ -4,7 +4,7 @@ import matplotlib.patches as pat
 import numpy as np
 import collections
 
-from utils import bbox_iou, get_gt_bboxes, get_gt_bboxes_task2
+from utils import bbox_iou, get_gt_bboxes, get_gt_bboxes_f1_overtime
 
 
 def show_bboxes(path, bboxes, bboxes_noisy):
@@ -44,7 +44,7 @@ def show_bboxes(path, bboxes, bboxes_noisy):
 
 
 def f1_over_time():
-    bboxes, bboxes_noisy, num_instances, dict_of_instances = get_gt_bboxes_task2(discard_probability=0.5, noise_range=25)
+    bboxes, bboxes_noisy, num_instances, dict_of_instances = get_gt_bboxes_f1_overtime(discard_probability=0.5, noise_range=25)
     path = '../datasets/AICity_data/train/S03/c010/vdo.avi'
 
     show = False
@@ -154,6 +154,7 @@ def f1_over_time():
 
 
 def iou_over_time():
+    path_bboxes = '../datasets/AICity_data/train/S03/c010/vdo.avi'
     bboxes, bboxes_noisy, num_instances = get_gt_bboxes(discard_probability=0.1, noise_range=25)
     path = '../datasets/AICity_data/train/S03/c010/vdo.avi'
 
@@ -194,6 +195,11 @@ def iou_over_time():
         toPlot = toPlot[t_axis[0]:t_axis[-1]+1]
 
     plt.plot(t_axis, toPlot)
+    plt.xlabel("Frames")
+    plt.ylabel("IoU")
+    plt.title("IoU over time")
+    plt.legend(loc='best')
+    plt.show()
 
 
 if __name__ == '__main__':
