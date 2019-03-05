@@ -1,6 +1,8 @@
 from random import randrange, random
 import numpy as np
 import matplotlib.pyplot as plt
+from xml.dom import minidom
+import os
 
 
 def bbox_iou(bboxA, bboxB):
@@ -206,4 +208,31 @@ def get_gt_bboxes_task2(discard_probability=0.1, noise_range=35):
                     bboxes_noisy[line[0]] = [[int(elem) + randrange(-noise_range, noise_range) for elem in line[1:6]]]
 
     return bboxes, bboxes_noisy, num_of_instances, dict_of_instances
+
+
+def read_xml_annotations(annotations_path):
+    files = os.listdir(annotations_path)
+
+    bboxes = dict()
+    for file in files:
+        xmldoc = minidom.parse(annotations_path + file)
+        bboxes_list = xmldoc.getElementsByTagName('box')
+        for element in bboxes_list:
+            frame = element.getAttribute('frame')
+            xtl = int(float(element.getAttribute('xtl')))
+            ytl = int(float(element.getAttribute('ytl')))
+            xbr = int(float(element.getAttribute('xbr')))
+            ybr = int(float(element.getAttribute('ybr')))
+            width = ybr - ytl
+            height = xbr - xtl
+
+            if frame in bboxes.keys():
+                bboxes[frame].append([-1, xtl, ytl, height, width])
+            else:
+                bboxes[frame] = [[-1, xtl, ytl, height, width]]
+    return bboxes
+
+
+
+
 
