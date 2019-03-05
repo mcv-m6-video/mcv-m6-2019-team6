@@ -58,4 +58,35 @@ def get_gt_bboxes(discard_probability=0.1, noise_range=35):
     return bboxes, bboxes_noisy, num_of_instances
 
 
+def get_gt_bboxes_task2(discard_probability=0.1, noise_range=35):
+    """
+    Creates a dictionary with the bounding boxes in each frame where the frame number is the key. It also creates
+    the noisy bounding boxes.
+    :return:
+    """
+    with open('../datasets/AICity_data/train/S03/c010/gt/gt.txt') as f:
+        lines = f.readlines()
+        bboxes = dict()
+        bboxes_noisy = dict()
+        num_of_instances = 0
+        dict_of_instances = dict() #this dict is for task2 when we need the FN frame by frame (not in total)
+        for line in lines:
+            num_of_instances += 1
+            line = (line.split(','))
+            if line[0] in bboxes.keys():
+                bboxes[line[0]].append([int(elem) for elem in line[1:6]])
+            else:
+                bboxes[line[0]] = [[int(elem) for elem in line[1:6]]]
+
+            if line[0] in dict_of_instances.keys():
+                dict_of_instances[line[0]] += 1
+            else:
+                dict_of_instances[line[0]] = 1
+            if random() > discard_probability:
+                if line[0] in bboxes_noisy.keys():
+                    bboxes_noisy[line[0]].append([int(elem) + randrange(-noise_range, noise_range) for elem in line[1:6]])
+                else:
+                    bboxes_noisy[line[0]] = [[int(elem) + randrange(-noise_range, noise_range) for elem in line[1:6]]]
+
+    return bboxes, bboxes_noisy, num_of_instances, dict_of_instances
 
