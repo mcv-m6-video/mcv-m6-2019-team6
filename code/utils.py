@@ -60,6 +60,25 @@ def get_gt_bboxes(discard_probability=0.1, noise_range=35):
     return bboxes, bboxes_noisy, num_of_instances
 
 
+def get_detection_bboxes(detector):
+    """
+    Creates a dictionary with the bounding boxes from the detectors in each frame where the frame number is the key.
+    :return:
+    """
+    with open('../datasets/AICity_data/train/S03/c010/det/det_' + detector + '.txt') as f:
+        lines = f.readlines()
+        bboxes = dict()
+        num_of_instances = 0
+        for line in lines:
+            num_of_instances += 1
+            line = (line.split(','))
+            if line[0] in bboxes.keys():
+                bboxes[line[0]].append([int(float(elem)) for elem in line[1:6]])
+            else:
+                bboxes[line[0]] = [[int(float(elem)) for elem in line[1:6]]]
+    return bboxes, num_of_instances
+
+
 def evaluation_detections(thresholds, bboxes_gt, bboxes_detected, num_instances):
     """
     Computes all the scores.
