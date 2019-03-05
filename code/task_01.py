@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as pat
 import numpy as np
 
-from utils import bbox_iou, get_gt_bboxes
+from utils import get_gt_bboxes, evaluation_detections, compute_map, plot_pr
 
 
 def show_bboxes(path, bboxes, bboxes_noisy):
@@ -43,32 +43,25 @@ def show_bboxes(path, bboxes, bboxes_noisy):
 
 
 def main():
-    bboxes, bboxes_noisy, num_instances = get_gt_bboxes(discard_probability=0.1, noise_range=25)
+    bboxes, bboxes_noisy, num_instances_gt = get_gt_bboxes(discard_probability=0.1, noise_range=20)
     path = '../datasets/AICity_data/train/S03/c010/vdo.avi'
 
     show = False
     if show:
         show_bboxes(path, bboxes, bboxes_noisy)
 
+    # compute all the scores (TP, FP, FN)
     thresholds = np.linspace(0.5, 1, 11)
-
-    TP = np.zeros(len(thresholds), dtype=int)
-    FP = np.zeros(len(thresholds), dtype=int)
-    for key in bboxes_noisy.keys():
-        for bbox_noisy in bboxes_noisy[key]:
-            scores = [bbox_iou(bbox_noisy[1:], bbox[1:]) for bbox in bboxes[key]]
-            max_score = max(scores)
-            for i, threshold in enumerate(thresholds):
-                if max_score > threshold:
-                    TP[i] += 1
-                else:
-                    FP[i] += 1
-
-    FN = num_instances - (TP+FP)  # number of instances not detected
+    TP, FP, FN, scores = evaluation_detections(thresholds, bboxes, bboxes_noisy, num_instances_gt)
     for i, threshold in enumerate(thresholds):
         print("Threshold: %.2f:" % threshold, " TP:", str(TP[i]), " FP: ", str(FP[i]), " FN: ",
-              str(FN[i]), " (", str(FP[i]+TP[i]+FN[i]), " anotations)")
+              str(FN[i]), " (", str(FP[i] + TP[i] + FN[i]), " annotations)")
 
+    pr, pinterps, idxs_interpolations, mAP, APs = compute_map(scores, num_instances_gt)
+    print("mAP: ", mAP)
+
+    # plot the pr curves, the interpolated values used to compute AP appear in red:
+    plot_pr(pr, thresholds, pinterps, idxs_interpolations, APs)
 
 
 if __name__ == '__main__':
