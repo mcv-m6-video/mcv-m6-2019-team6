@@ -4,7 +4,7 @@ import matplotlib.patches as pat
 import numpy as np
 import collections
 
-from utils import bbox_iou, get_gt_bboxes, get_gt_bboxes_f1_overtime
+from utils import bbox_iou, get_gt_bboxes, get_gt_bboxes_task2, get_detection_bboxes
 
 
 def show_bboxes(path, bboxes, bboxes_noisy):
@@ -44,7 +44,7 @@ def show_bboxes(path, bboxes, bboxes_noisy):
 
 
 def f1_over_time():
-    bboxes, bboxes_noisy, num_instances, dict_of_instances = get_gt_bboxes_f1_overtime(discard_probability=0.5, noise_range=25)
+    bboxes, bboxes_noisy, num_instances, dict_of_instances = get_gt_bboxes_task2(discard_probability=0.5, noise_range=25)
     path = '../datasets/AICity_data/train/S03/c010/vdo.avi'
 
     show = False
@@ -154,20 +154,23 @@ def f1_over_time():
 
 
 def iou_over_time():
-    path_bboxes = '../datasets/AICity_data/train/S03/c010/vdo.avi'
-    bboxes, bboxes_noisy, num_instances = get_gt_bboxes(discard_probability=0.1, noise_range=25)
-    path = '../datasets/AICity_data/train/S03/c010/vdo.avi'
+    # Add just random noise to gt bboxes
+    # bboxes, bboxes_noisy, num_instances = get_gt_bboxes(discard_probability=0.1, noise_range=25)
 
-    # show = False
-    # if show:
-    #     show_bboxes(path, bboxes, bboxes_noisy)
+    # Used the detector bboxes
+    bboxes, _, num_instances = get_gt_bboxes(discard_probability=0.1, noise_range=25)
+    detector = 'yolo3'
+    bboxes_noisy, _ = get_detection_bboxes(detector)
+
     valid_scores = dict()
     for key in bboxes_noisy.keys():
         frame_scores = []
-        mean_score = 0
         for bbox_noisy in bboxes_noisy[key]:
-            scores = [bbox_iou(bbox_noisy[1:], bbox[1:]) for bbox in bboxes[key]]
-            max_score = max(scores)
+            if key in bboxes.keys():
+                scores = [bbox_iou(bbox_noisy[1:], bbox[1:]) for bbox in bboxes[key]]
+                max_score = max(scores)
+            else:
+                max_score = 0
             frame_scores.append(max_score)
         mean_score = (sum(frame_scores))/float(len(frame_scores))
         valid_scores[key] = mean_score
