@@ -154,13 +154,19 @@ def f1_over_time():
 
 
 def iou_over_time():
-    # Add just random noise to gt bboxes
-    # bboxes, bboxes_noisy, num_instances = get_gt_bboxes(discard_probability=0.1, noise_range=25)
 
-    # Used the detector bboxes
-    bboxes, _, num_instances = get_gt_bboxes(discard_probability=0.1, noise_range=25)
     detector = 'yolo3'
-    bboxes_noisy, _ = get_detection_bboxes(detector)
+    # detector = 'ssd512'
+    # detector = 'mask_rcnn'
+    # detector = 'noisyGT'
+
+    # Add just random noise to gt bboxes
+    if (detector == 'noisyGT'):
+        bboxes, bboxes_noisy, num_instances = get_gt_bboxes(discard_probability=0.1, noise_range=25)
+    else:
+        # Used the detector bboxes
+        bboxes, _, num_instances = get_gt_bboxes(discard_probability=0.1, noise_range=25)
+        bboxes_noisy, _ = get_detection_bboxes(detector)
 
     valid_scores = dict()
     for key in bboxes_noisy.keys():
@@ -200,8 +206,9 @@ def iou_over_time():
     plt.plot(t_axis, toPlot)
     plt.xlabel("Frames")
     plt.ylabel("IoU")
-    plt.title("IoU over time")
+    plt.title("IoU over time_"+detector)
     plt.legend(loc='best')
+    plt.savefig('iou_over_time_'+detector+'.png')
     plt.show()
 
     from utils import plot_iou_over_time
