@@ -54,14 +54,22 @@ def get_gt_bboxes(discard_probability=0.1, noise_range=35):
             num_of_instances += 1
             line = (line.split(','))
             if line[0] in bboxes.keys():
-                bboxes[line[0]].append([int(elem) for elem in line[1:6]])
+                content = [int(elem) for elem in line[1:6]]
+                content.append(random())
+                bboxes[line[0]].append(content)
             else:
-                bboxes[line[0]] = [[int(elem) for elem in line[1:6]]]
+                content = [int(elem) for elem in line[1:6]]
+                content.append(random())
+                bboxes[line[0]] = [content]
             if random() > discard_probability:
                 if line[0] in bboxes_noisy.keys():
-                    bboxes_noisy[line[0]].append([int(elem) + randrange(-noise_range, noise_range) for elem in line[1:6]])
+                    content = [int(elem) + randrange(-noise_range, noise_range) for elem in line[1:6]]
+                    content.append(random())
+                    bboxes_noisy[line[0]].append(content)
                 else:
-                    bboxes_noisy[line[0]] = [[int(elem) + randrange(-noise_range, noise_range) for elem in line[1:6]]]
+                    content = [int(elem) + randrange(-noise_range, noise_range) for elem in line[1:6]]
+                    content.append(random())
+                    bboxes_noisy[line[0]] = [content]
 
     return bboxes, bboxes_noisy, num_of_instances
 
@@ -79,9 +87,13 @@ def get_detection_bboxes(detector):
             num_of_instances += 1
             line = (line.split(','))
             if line[0] in bboxes.keys():
-                bboxes[line[0]].append([int(float(elem)) for elem in line[1:6]])
+                content = [int(float(elem)) for elem in line[1:6]]
+                content.append(float(line[6]))  # confidence score??????
+                bboxes[line[0]].append(content)
             else:
-                bboxes[line[0]] = [[int(float(elem)) for elem in line[1:6]]]
+                content = [int(float(elem)) for elem in line[1:6]]
+                content.append(float(line[6]))
+                bboxes[line[0]] = [content]
     return bboxes, num_of_instances
 
 
@@ -93,27 +105,26 @@ def evaluation_detections(thresholds, bboxes_gt, bboxes_detected, num_instances)
     FP = np.zeros(len(thresholds), dtype=int)
 
     scores_detections = [[] for i in range(len(thresholds))]
-    # scores_detections is pair of values [result, confidence) where result is true if the example is correctly
+    # scores_detections is pair of values [result, confidence] where result is true if the example is correctly
     # classified and confidence is the confidence of the prediction. It's used to compute the precision-recall
-    # curve. Not sure what it's supposed to be since we are not provided with this confidence so it's random.
+    # curve. Confidence score is random if the predicted scores do not belong to a detector.
 
     for key in bboxes_detected.keys():
         for bbox_noisy in bboxes_detected[key]:
             if key in bboxes_gt:  # if we have detected stuff and it is in the gt
-                scores = [bbox_iou(bbox_noisy[1:], bbox[1:]) for bbox in bboxes_gt[key]]
+                scores = [bbox_iou(bbox_noisy[1:5], bbox[1:5]) for bbox in bboxes_gt[key]]
                 max_score = max(scores)
                 for i, threshold in enumerate(thresholds):
                     if max_score > threshold:
                         TP[i] += 1
                         # we give correct boxes a slightly higher confidence score
-                        scores_detections[i].append([1, random()+random()*0.1])
+                        scores_detections[i].append([1, bbox_noisy[5]])
                     else:
                         FP[i] += 1
-                        scores_detections[i].append([0, random()])
+                        scores_detections[i].append([0, bbox_noisy[5]])
             else:  # if we have detected stuff and it is not in the gt
                 for i, threshold in enumerate(thresholds):
                     FP[i] += 1
-                    scores_detections[i].append([0, random()])
 
     FN = num_instances - TP  # number of instances not detected
     return TP, FP, FN, np.array(scores_detections)
@@ -121,7 +132,7 @@ def evaluation_detections(thresholds, bboxes_gt, bboxes_detected, num_instances)
 
 def plot_pr(pr_over_time, thresholds, pinterps, idxs_interpolations, APs):
     for i, pr in enumerate(pr_over_time):
-        plt.plot(pr[:, 1], pr[:, 0], label="PR threshold: %.2f" % thresholds[i] + " (AP:%.2f)" % APs[i])
+        plt.plot(pr[:, 1], pr[:, 0], label="P-R at thres.: %.2f" % thresholds[i] + " (AP:%.2f)" % APs[i])
         recall = pr[idxs_interpolations[i], 1]
         plt.scatter(recall, pinterps[i], c='r')
     plt.xlabel("Recall")
@@ -150,7 +161,7 @@ def compute_map(scores, num_instances):
         pr.append(pr_)
     pr = np.array(pr)
 
-    pinterps = []  # list of interpolated precisions for every threshold
+    pinterps = []  # lists of interpolated precisions for every confidence level
     ranks = np.linspace(0, 1, 11)
     idxs_interpolations = []  # list of indexes of the interpolated precisions, just to plot the recall
     for pr_ in pr:
@@ -231,15 +242,15 @@ def read_xml_annotations(annotations_path):
             height = xbr - xtl
 
             if frame in bboxes.keys():
-                bboxes[frame].append([-1, xtl, ytl, height, width])
+                bboxes[frame].append([-1, xtl, ytl, height, width, random()])
             else:
-                bboxes[frame] = [[-1, xtl, ytl, height, width]]
+                bboxes[frame] = [[-1, xtl, ytl, height, width, random()]]
     return bboxes
 
 
 def plot_iou_over_time(path, iou, bboxes, bboxes_noisy):
     """
-    Plots the IoI over time
+    Plots the IoU over time
     """
     capture = cv2.VideoCapture(path)
     success = True
