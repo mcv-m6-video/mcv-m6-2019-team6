@@ -18,21 +18,24 @@ def show_bboxes(path, bboxes, bboxes_noisy):
     print("number of frames :", capture.get(cv2.CAP_PROP_FRAME_COUNT))
     success = True
     plt.axes()
+    rescaling_factor = 0.25
     while success:
         success, frame = capture.read()
         current_frame = int(capture.get(cv2.CAP_PROP_POS_FRAMES))
         print('frame: ', current_frame)
         if current_frame < 218:  # skip the firsts frames without bboxes
             continue
-        plt.imshow(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+        plt.imshow(cv2.resize(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB), (0,0), fx=rescaling_factor, fy=rescaling_factor))
         if str(current_frame) in bboxes.keys():
             for bbox in bboxes[str(current_frame)]:
-                rect = pat.Rectangle((bbox[1], bbox[2]), bbox[3], bbox[4],
+                rect = pat.Rectangle((bbox[1]*rescaling_factor, bbox[2]*rescaling_factor),
+                                     bbox[3]*rescaling_factor, bbox[4]*rescaling_factor,
                                      linewidth=1, edgecolor='r', facecolor='none')
                 plt.gca().add_patch(rect)
         if str(current_frame) in bboxes_noisy.keys():
             for bbox_noisy in bboxes_noisy[str(current_frame)]:
-                rect = pat.Rectangle((bbox_noisy[1], bbox_noisy[2]), bbox_noisy[3], bbox_noisy[4],
+                rect = pat.Rectangle((bbox_noisy[1]*rescaling_factor, bbox_noisy[2]*rescaling_factor),
+                                     bbox_noisy[3]*rescaling_factor, bbox_noisy[4]*rescaling_factor,
                                      linewidth=1, edgecolor='b', facecolor='none')
                 plt.gca().add_patch(rect)
         plt.show(block=False)
@@ -43,10 +46,10 @@ def show_bboxes(path, bboxes, bboxes_noisy):
 
 
 def main():
-    bboxes_gt, bboxes_noisy, num_instances_gt = get_gt_bboxes(discard_probability=0.1, noise_range=20)
+    bboxes_gt, bboxes_noisy, num_instances_gt = get_gt_bboxes(discard_probability=0.2, noise_range=50)
     path = '../datasets/AICity_data/train/S03/c010/vdo.avi'
 
-    show = False
+    show = True
     if show:
         show_bboxes(path, bboxes_gt, bboxes_noisy)
 
@@ -79,6 +82,10 @@ def main():
 
     # plot the pr curves, the interpolated values used to compute AP appear in red:
     plot_pr(pr, thresholds, pinterps, idxs_interpolations, APs)
+
+    # if True:
+    #     show_bboxes(path, bboxes_gt, bboxes_annotations)
+
 
 
 if __name__ == '__main__':

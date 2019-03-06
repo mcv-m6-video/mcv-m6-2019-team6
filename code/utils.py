@@ -1,8 +1,12 @@
 from random import randrange, random
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.patches as pat
 from xml.dom import minidom
+import cv2
+
 import os
+
 
 
 def bbox_iou(bboxA, bboxB):
@@ -111,7 +115,7 @@ def evaluation_detections(thresholds, bboxes_gt, bboxes_detected, num_instances)
                     FP[i] += 1
                     scores_detections[i].append([0, random()])
 
-    FN = abs(num_instances - (TP + FP))  # number of instances not detected
+    FN = num_instances - TP  # number of instances not detected
     return TP, FP, FN, np.array(scores_detections)
 
 
@@ -133,7 +137,7 @@ def compute_map(scores, num_instances):
     """
     pr = []
     for i, score in enumerate(scores):
-        score = score[np.argsort(-score[:, 1])]
+        score = score[np.argsort(-score[:, 1])]  # sort by confidence score
         FP = 0
         TP = 0
         pr_ = []
@@ -214,8 +218,8 @@ def read_xml_annotations(annotations_path):
     files = os.listdir(annotations_path)
 
     bboxes = dict()
-    for file in files:
-        xmldoc = minidom.parse(annotations_path + file)
+    for file_ in files:
+        xmldoc = minidom.parse(annotations_path + file_)
         bboxes_list = xmldoc.getElementsByTagName('box')
         for element in bboxes_list:
             frame = element.getAttribute('frame')
@@ -233,6 +237,41 @@ def read_xml_annotations(annotations_path):
     return bboxes
 
 
+def plot_iou_over_time(path, iou, bboxes, bboxes_noisy):
+    """
+    Plots the IoI over time
+    """
+    capture = cv2.VideoCapture(path)
+    success = True
+    rescaling_factor = 0.25
+    margin = 0
+    while success:
+        success, frame = capture.read()
+        current_frame = int(capture.get(cv2.CAP_PROP_POS_FRAMES))
+        print('frame: ', current_frame)
 
+        plt.subplot(2, 1, 1)
+        plt.imshow(cv2.resize(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB), (0,0), fx=rescaling_factor, fy=rescaling_factor))
+        if str(current_frame) in bboxes.keys():
+            for bbox in bboxes[str(current_frame)]:
+                rect = pat.Rectangle((bbox[1]*rescaling_factor, bbox[2]*rescaling_factor),
+                                     bbox[3]*rescaling_factor, bbox[4]*rescaling_factor,
+                                     linewidth=1, edgecolor='r', facecolor='none')
+                plt.gca().add_patch(rect)
+        if str(current_frame) in bboxes_noisy.keys():
+            for bbox_noisy in bboxes_noisy[str(current_frame)]:
+                rect = pat.Rectangle((bbox_noisy[1]*rescaling_factor, bbox_noisy[2]*rescaling_factor),
+                                     bbox_noisy[3]*rescaling_factor, bbox_noisy[4]*rescaling_factor,
+                                     linewidth=1, edgecolor='b', facecolor='none')
+                plt.gca().add_patch(rect)
+        plt.subplot(2, 1, 2)
+        if current_frame > 150: margin = current_frame - 150
+        plt.plot(iou[margin:current_frame])
+        plt.show(block=False)
+
+        plt.pause(0.0001)
+        plt.clf()
+
+    capture.release()
 
 

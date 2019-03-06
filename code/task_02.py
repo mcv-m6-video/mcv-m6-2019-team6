@@ -204,6 +204,12 @@ def iou_over_time():
     plt.legend(loc='best')
     plt.show()
 
+    from utils import plot_iou_over_time
+
+    # I've added this for the visualization of the IoU over time
+    # path = '../datasets/AICity_data/train/S03/c010/vdo.avi'
+    # plot_iou_over_time(path, np.array(toPlot), bboxes, bboxes_noisy)
+
 
 if __name__ == '__main__':
     # f1_over_time()
