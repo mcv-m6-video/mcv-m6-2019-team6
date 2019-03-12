@@ -7,7 +7,7 @@ from utils.gt import get_gt_bboxes
 from utils.metrics import evaluation_detections, compute_map
 from utils.plot import plot_pr, show_bboxes
 
-def bgEstimate(path, colorspace='GRAY'):
+def bgEstimate(path, alpha=2, mask_roi=None, colorspace='GRAY'):
     """
     :param path:
     :param bboxes:
@@ -56,7 +56,6 @@ def bgEstimate(path, colorspace='GRAY'):
         varianceImage = np.var(sequence, axis=0)
 
     # Extract foreground from remaining frames
-    alpha = 2
     print(meanImage.shape)
     # plt.imshow(cv2.resize(varianceImage, (0,0), fx=rescaling_factor, fy=rescaling_factor))
     detections = dict()
@@ -81,6 +80,9 @@ def bgEstimate(path, colorspace='GRAY'):
             maskYU = cv2.bitwise_and(foregroundMask[:,:,0], foregroundMask[:,:,1])
             maskYV = cv2.bitwise_and(foregroundMask[:,:,0], foregroundMask[:,:,2])
             foregroundMask = cv2.bitwise_or(maskYU[:,:], maskYV[:,:])
+
+        if mask_roi is not None:
+            foregroundMask = foregroundMask & mask_roi
 
         # cv2.imshow("window", foregroundMask)
         # cv2.waitKey()        
@@ -130,7 +132,8 @@ def bgEstimate(path, colorspace='GRAY'):
 def main():
 
     path = '../../datasets/AICity_data/train/S03/c010/vdo.avi'
-    bboxes_detected, trainingFrames = bgEstimate(path, 'YUV')
+    mask_roi = cv2.imread(path_roi, cv2.IMREAD_GRAYSCALE)
+    bboxes_detected, trainingFrames = bgEstimate(path, alpha=2, mask_roi, 'YUV')
 
     bboxes_gt, num_instances_gt = get_gt_bboxes()
     # get the number of instances in the validation split (needed to calculate the number of FN and the recall)
