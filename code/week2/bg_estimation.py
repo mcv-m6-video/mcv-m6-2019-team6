@@ -89,9 +89,12 @@ def bgEstimate(path, alpha=2, mask_roi=None, colorspace='GRAY'):
             maskYU = cv2.bitwise_and(foregroundMask[:,:,0], foregroundMask[:,:,1])
             maskYV = cv2.bitwise_and(foregroundMask[:,:,0], foregroundMask[:,:,2])
             foregroundMask = cv2.bitwise_or(maskYU[:,:], maskYV[:,:])
+            if mask_roi is not None:  # does not work in my computer when I load the RoI
+                foregroundMask = cv2.bitwise_and(foregroundMask[:,:], mask_roi[:,:])
+        elif mask_roi is not None:
+            # does not work in my computer when I load the RoI
+            foregroundMask = cv2.bitwise_and(foregroundMask[:,:], mask_roi[:,:])
 
-        if mask_roi is not None:  # does not work in my computer when I load the RoI
-            foregroundMask = foregroundMask & mask_roi
 
         # cv2.imshow("window", foregroundMask)
         # cv2.waitKey()
