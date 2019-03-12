@@ -48,23 +48,21 @@ def evaluation_detections(thresholds, bboxes_gt, bboxes_detected, num_instances_
         if int(key) > starting_frame:
             for bbox_detected in bboxes_detected[key]:
                 if key in bboxes_gt:  # if we have detected stuff in this frame and it is in the gt
-                    scores = [[bbox_iou(bbox_detected[0:4], bbox_gt[1:5]), bbox_detected[4]] for bbox_gt in bboxes_gt[key]]
-                    scores_arr = np.array(scores)
-                    index = scores_arr[:, 0].argmax()  # find the max iou score
-                    max_score = scores[index]  # [iou value, confidence score
-
+                    scores = np.array([[bbox_iou(bbox_detected[0:4], bbox_gt[1:5])] for bbox_gt in bboxes_gt[key]])
+                    index = scores.argmax()  # find the max iou score
+                    max_score = scores[index]  # [iou value]
                     for i, threshold in enumerate(thresholds):
                         if max_score[0] > threshold:
                             TP[i] += 1
-                            scores_detections[i].append([1, max_score[1]])
+                            scores_detections[i].append([1, bbox_detected[4]])
 
                             # delete the bounding box from the gt
-                            del (bboxes_gt[key][index])
+                            del(bboxes_gt[key][index])
                             if bboxes_gt[key] == []:
                                 bboxes_gt.pop(key, None)
                         else:
                             FP[i] += 1
-                            scores_detections[i].append([0, max_score[1]])
+                            scores_detections[i].append([0, bbox_detected[4]])
                 else:  # if we have detected stuff and it is not in the gt
                     for i, threshold in enumerate(thresholds):
                         FP[i] += 1

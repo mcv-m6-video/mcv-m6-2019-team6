@@ -4,34 +4,51 @@ import matplotlib.patches as pat
 import numpy as np
 import os
 
+from utils.gt import get_gt_bboxes
+from utils.metrics import evaluation_detections, compute_map
+from utils.plot import plot_pr, show_bboxes
+
 
 def adaptive_bg_estimation(path, alpha=2.5, rho=0.1, mask_roi=None, path_to_save=None):
     capture = cv2.VideoCapture(path)
     totalFrames = capture.get(cv2.CAP_PROP_FRAME_COUNT)
     width = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    print("number of frames :", totalFrames)
-    print("Frame size: " + str(width) +" x " + str(height))
+    # print("number of frames :", totalFrames)
+    # print("Frame size: " + str(width) +" x " + str(height))
     success = True
     rescaling_factor = 0.4
 
     # Load training sequence
-    trainingFrames = totalFrames*0.25
-    sequence = []
+    trainingFrames = totalFrames * 0.25
+    frames_acc = np.zeros((height, width), dtype='float')
     currentFrame = 0
     while success and currentFrame < trainingFrames:
         success, frame = capture.read()
         currentFrame = int(capture.get(cv2.CAP_PROP_POS_FRAMES))
         grayFrame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        sequence.append(grayFrame)
-        print('frame: ', currentFrame)
+        frames_acc += grayFrame
+        # print('frame: ', currentFrame)
 
-    print('Computing mean and variance...')
-    meanImage = np.mean(sequence, axis=0)
-    varianceImage = np.std(sequence, axis=0)
+    # Compute mean and variance
+    # print('Computing mean and variance...')
+    meanImage = frames_acc / trainingFrames
+
+    # set the current frame to 0 and compute the variance
+    capture.set(cv2.CAP_PROP_POS_FRAMES, 0)
+    currentFrame = int(capture.get(cv2.CAP_PROP_POS_FRAMES))
+    var_acc = np.zeros((height, width), dtype='float')
+    success = True
+    while success and currentFrame < trainingFrames:
+        success, frame = capture.read()
+        currentFrame = int(capture.get(cv2.CAP_PROP_POS_FRAMES))
+        grayFrame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        var_acc += (grayFrame - meanImage) ** 2
+
+    varianceImage = (var_acc / trainingFrames)
 
     # Extract foreground from remaining frames
-    print(meanImage.shape)
+    # print(meanImage.shape)
     masks = []
     detections = dict()
     while success:
@@ -41,7 +58,7 @@ def adaptive_bg_estimation(path, alpha=2.5, rho=0.1, mask_roi=None, path_to_save
         grayFrame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         # print('frame: ', currentFrame)
 
-        mask = np.absolute(grayFrame - meanImage) >= alpha * (varianceImage + 2)
+        mask = np.absolute(grayFrame - meanImage) >= alpha * (np.sqrt(varianceImage) + 2)
         if mask_roi is not None:
             mask = mask & mask_roi
 
@@ -78,7 +95,7 @@ def adaptive_bg_estimation(path, alpha=2.5, rho=0.1, mask_roi=None, path_to_save
                         stats[i, cv2.CC_STAT_TOP],
                         stats[i, cv2.CC_STAT_WIDTH],
                         stats[i, cv2.CC_STAT_HEIGHT]]
-                cv2.rectangle(frame, (bbox[0], bbox[1]), (bbox[0] + bbox[2], bbox[1] + bbox[3]), (0, 0, 255), 7)
+                # cv2.rectangle(frame, (bbox[0], bbox[1]), (bbox[0] + bbox[2], bbox[1] + bbox[3]), (0, 0, 255), 7)
 
                 # add the detections in the dictionary
                 content = bbox
@@ -88,27 +105,49 @@ def adaptive_bg_estimation(path, alpha=2.5, rho=0.1, mask_roi=None, path_to_save
                 else:
                     detections[str(currentFrame)] = [content]
 
-        plt.imshow(cv2.resize(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB), (0,0), fx=rescaling_factor, fy=rescaling_factor))
-        plt.show(block=False)
-        plt.pause(0.05)
-        plt.clf()
+        # plt.imshow(cv2.resize(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB), (0,0), fx=rescaling_factor, fy=rescaling_factor))
+        # plt.show(block=False)
+        # plt.pause(0.05)
+        # plt.clf()
 
-        plt.imshow(cv2.resize(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB), (0,0), fx=rescaling_factor, fy=rescaling_factor))
+        # plt.imshow(cv2.resize(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB), (0,0), fx=rescaling_factor, fy=rescaling_factor))
 
     capture.release()
     return detections, trainingFrames
 
 
-    capture.release()
-    return masks
-
-
-if __name__ == "__main__":
+def main(alpha, rho):
     path = '../../datasets/AICity_data/train/S03/c010/vdo.avi'
     path_to_save_adap = '../../datasets/AICity_data/train/S03/c010/maskAdap/'
     path_roi = '../../datasets/AICity_data/train/S03/c010/roi.jpg'
 
     mask_roi = cv2.imread(path_roi, cv2.IMREAD_GRAYSCALE)
 
-    adaptive_bg_estimation(path, alpha=2.5, rho=0.0, mask_roi=mask_roi, path_to_save=None)
+    bboxes_detected, trainingFrames = adaptive_bg_estimation(path, alpha=alpha, rho=rho, mask_roi=mask_roi, path_to_save=None)
+
+    bboxes_gt, num_instances_gt = get_gt_bboxes()
+    # get the number of instances in the validation split (needed to calculate the number of FN and the recall)
+    num_instances_validation = 0
+    for key in bboxes_gt.keys():
+        if int(key) > trainingFrames:
+            num_instances_validation += len(bboxes_gt[key])
+
+    threshold = [0.5]
+    TP, FP, FN, scores = evaluation_detections(threshold, bboxes_gt, bboxes_detected, num_instances_validation, trainingFrames)
+    print("tp: ", TP, "fp: ", FP, "fn: ", FN)
+    pr, pinterps, idxs_interpolations, mAP, APs = compute_map(scores, num_instances_validation)
+    print("map: ", mAP)
+    # plot_pr(pr, threshold, pinterps, idxs_interpolations, APs)  # plot mAP
+
+    # bboxes_gt, num_instances_gt = get_gt_bboxes()  # load the bboxes from the gt again
+    # show_bboxes(path, bboxes_gt, bboxes_detected)  # show the bounding boxes
+
+
+if __name__ == "__main__":
+    search_space = [(3, 0.5), (4, 0.5), (5, 0.5), (6, 0.5), (7, 0.5)]
+    # I've commented all the prints for now so I can see the scores outputed for every configuration without too
+    # much stuff in between
+    for config in search_space:
+        print("trying alpha - rho: ", config[0], " - ", config[1])
+        main(config[0], config[1])
 
