@@ -135,6 +135,8 @@ def plot_pr(pr_over_time, thresholds, pinterps, idxs_interpolations, APs):
         plt.plot(pr[:, 1], pr[:, 0], label="P-R at thres.: %.2f" % thresholds[i] + " (AP:%.2f)" % APs[i])
         recall = pr[idxs_interpolations[i], 1]
         plt.scatter(recall, pinterps[i], c='r')
+    for i in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]:
+        plt.scatter(i, 0.0, c='r')
     plt.xlabel("Recall")
     plt.ylabel("Precision")
     plt.title("Precision-Recall curves")

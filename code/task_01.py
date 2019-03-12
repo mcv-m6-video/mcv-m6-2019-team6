@@ -54,7 +54,7 @@ def show_bboxes(path, bboxes, bboxes_noisy):
 
 
 def main():
-    bboxes_gt, bboxes_noisy, num_instances_gt = get_gt_bboxes(discard_probability=0.2, noise_range=50)
+    bboxes_gt, bboxes_noisy, num_instances_gt = get_gt_bboxes(discard_probability=0.1, noise_range=20)
     path = '../datasets/AICity_data/train/S03/c010/vdo.avi'
 
     # show_bboxes(path, bboxes_gt, bboxes_noisy)
