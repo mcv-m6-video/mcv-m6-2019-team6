@@ -7,14 +7,10 @@ from utils.gt import get_gt_bboxes
 from utils.metrics import evaluation_detections, compute_map
 from utils.plot import plot_pr, show_bboxes
 
+fgbg_Mog  = cv2.bgsegm.createBackgroundSubtractorMOG(history = 200,nmixtures = 6)
+fgbg_Mog2 = cv2.createBackgroundSubtractorMOG2(history = 200 )
 
-
-def bgEstimate(path, alpha=2, mask_roi=None, colorspace='GRAY'):
-    """
-    :param path:
-    :param bboxes:
-    :return:
-    """
+def bgEstimate(path, alpha=2, mask_roi=None, algo = 'Mog'):
     capture = cv2.VideoCapture(path)
     totalFrames = capture.get(cv2.CAP_PROP_FRAME_COUNT)
     width = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -28,85 +24,43 @@ def bgEstimate(path, alpha=2, mask_roi=None, colorspace='GRAY'):
 
     # Load training sequence
     trainingFrames = totalFrames * 0.25
-    if colorspace == 'GRAY':
-        frames_acc = np.zeros((height, width), dtype='float')
-        var_acc = np.zeros((height, width), dtype='float')
-    elif colorspace == 'YUV':
-        frames_acc = np.zeros((height, width, 3), dtype='float')
-        var_acc = np.zeros((height, width, 3), dtype='float')
-    else:
-        print("wrong color space")
-        return
-
-    currentFrame = 0
-    while success and currentFrame < int(trainingFrames):
-        success, frame = capture.read()
-        currentFrame = int(capture.get(cv2.CAP_PROP_POS_FRAMES))
-        if colorspace == 'GRAY':
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        elif colorspace == 'YUV':
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2YUV)
-        frames_acc += frame
-
-    # Compute mean and variance
-    print('Computing mean and variance...')
-    meanImage = frames_acc / trainingFrames
-
-    # set the current frame to 0 and compute the variance
-    capture.set(cv2.CAP_PROP_POS_FRAMES, 0)
-    currentFrame = int(capture.get(cv2.CAP_PROP_POS_FRAMES))
-    success = True
-    while success and currentFrame < trainingFrames:
-        success, frame = capture.read()
-        currentFrame = int(capture.get(cv2.CAP_PROP_POS_FRAMES))
-        if colorspace == 'GRAY':
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        elif colorspace == 'YUV':
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2YUV)
-        var_acc += (frame - meanImage) ** 2
-
-    varianceImage = (var_acc / trainingFrames)
 
     # Extract foreground from remaining frames
     # plt.imshow(cv2.resize(varianceImage, (0,0), fx=rescaling_factor, fy=rescaling_factor))
+    capture.set(cv2.CAP_PROP_POS_FRAMES, trainingFrames)
     detections = dict()
+    nF = 0
     while success:
+        nF+=1
         success, srcFrame = capture.read()
         if not success:
             break
         currentFrame = int(capture.get(cv2.CAP_PROP_POS_FRAMES))
         print('frame: ', currentFrame)
-
+        
         frame = srcFrame
-        if colorspace == 'GRAY':
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        elif colorspace == 'YUV':
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2YUV)
+        frame = cv2.GaussianBlur(frame,(19,19),0)
+        
+        if algo == 'Mog':
+            foregroundMask = fgbg_Mog.apply(frame)
+        elif algo == 'Mog2':
+            foregroundMask = fgbg_Mog2.apply(frame, learningRate=0.01 )
 
-        probabilityImage = np.absolute(frame - meanImage) - alpha * (np.sqrt(varianceImage)+ 2)
-        retVal, foregroundMask = cv2.threshold(probabilityImage, 0, 255, cv2.THRESH_BINARY)
+        foregroundMask = cv2.bitwise_and(foregroundMask, mask_roi)
+        #============================================================================
         # cv2.imshow("window", foregroundMask)
         # cv2.waitKey()
-        if colorspace != 'GRAY':
-            maskYU = cv2.bitwise_and(foregroundMask[:,:,0], foregroundMask[:,:,1])
-            maskYV = cv2.bitwise_and(foregroundMask[:,:,0], foregroundMask[:,:,2])
-            foregroundMask = cv2.bitwise_or(maskYU[:,:], maskYV[:,:])
-            if mask_roi is not None:  # does not work in my computer when I load the RoI
-                foregroundMask = cv2.bitwise_and(foregroundMask[:,:], mask_roi[:,:])
-        elif mask_roi is not None:
-            # does not work in my computer when I load the RoI
-            foregroundMask = cv2.bitwise_and(foregroundMask[:,:], mask_roi[:,:])
-
-
-        # cv2.imshow("window", foregroundMask)
-        # cv2.waitKey()
-        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7))
-        maskResized = cv2.resize(foregroundMask,(0,0), fx=0.4, fy=0.4)
+        kernel      = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))
+        #maskResized = cv2.resize(foregroundMask,(0,0), fx=0.4, fy=0.4)
         # maskResized = foregroundMask
         # cv2.imshow("window", maskResized)
         # cv2.waitKey()
-        openedMask = cv2.morphologyEx(maskResized, cv2.MORPH_CLOSE, kernel)
-        openedMask = cv2.resize(openedMask,(width,height))
+        openedMask = foregroundMask
+        openedMask = cv2.dilate(openedMask,kernel,iterations = 2)
+        for cl in range(2):
+            openedMask = cv2.morphologyEx(openedMask, cv2.MORPH_CLOSE, kernel)
+
+        _, openedMask = cv2.threshold(openedMask, 127, 255, cv2.THRESH_BINARY)
         # cv2.imshow("window", openedMask)
         # cv2.waitKey()
         # openedMask = foregroundMask
@@ -116,12 +70,47 @@ def bgEstimate(path, alpha=2, mask_roi=None, colorspace='GRAY'):
 
         min_size = 1000
         max_size = 1000000
+        boxes    = []
+
         for i in range(nlabels):
             if stats[i][4] >= min_size and stats[i][4] <= max_size and (stats[i, cv2.CC_STAT_WIDTH] / stats[i, cv2.CC_STAT_HEIGHT]) < 2.8 :
                 bbox = [stats[i, cv2.CC_STAT_LEFT],
                                     stats[i, cv2.CC_STAT_TOP],
                                     stats[i, cv2.CC_STAT_WIDTH],
                                     stats[i, cv2.CC_STAT_HEIGHT]]
+                boxes.append(bbox)
+
+        is_valid = [True] * len(boxes)
+
+        for i, a in enumerate(boxes):
+            for j, b in enumerate(boxes):
+
+                if j>i:
+                    a_area = a[2]*a[3]
+                    b_area = b[2]*b[3]
+                    aa = a.copy()
+                    bb = b.copy()
+                    aa[2] = a[0] + a[2]
+                    aa[3] = a[1] + a[3]
+                    bb[2] = b[0] + b[2]
+                    bb[3] = b[1] + b[3]                
+                    xA = max(aa[1], bb[1])
+                    yA = max(aa[0], bb[0])
+                    xB = min(aa[3], bb[3])
+                    yB = min(aa[2], bb[2])
+                    interArea = max(0, xB - xA + 1) * max(0, yB - yA + 1)
+                    print(a_area,b_area,interArea)
+                    #print
+                    if (interArea / a_area) > 0.3 or (interArea / b_area) > 0.3:
+                        #print('==========================================')
+                        if a_area > b_area:
+                            is_valid[j] = False
+                        else:
+                            is_valid[i] = False
+        print(is_valid)
+
+        for i, bbox in enumerate(boxes):
+            if is_valid[i]:
                 cv2.rectangle(srcFrame, (bbox[0], bbox[1]), (bbox[0] + bbox[2], bbox[1] + bbox[3]), (0,0,255), 7)
 
                 # add the detections in the dictionary
@@ -131,13 +120,12 @@ def bgEstimate(path, alpha=2, mask_roi=None, colorspace='GRAY'):
                     detections[str(currentFrame)].append(content)
                 else:
                     detections[str(currentFrame)] = [content]
+        cv2.imshow('output',srcFrame)
+        cv2.imshow('for',openedMask)
+        cv2.waitKey(1)
+        #if nF == 100:
+        #    break
 
-        plt.imshow(cv2.resize(cv2.cvtColor(srcFrame, cv2.COLOR_BGR2RGB), (0,0), fx=rescaling_factor, fy=rescaling_factor))
-        plt.show(block=False)
-        plt.pause(0.05)
-        plt.clf()
-
-    # plt.imshow(cv2.resize(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB), (0,0), fx=rescaling_factor, fy=rescaling_factor))
 
     capture.release()
     return detections, trainingFrames
@@ -147,7 +135,7 @@ def main():
     path = '../../datasets/AICity_data/train/S03/c010/vdo.avi'
     path_roi = '../../datasets/AICity_data/train/S03/c010/roi.jpg'
     mask_roi = cv2.imread(path_roi, cv2.IMREAD_GRAYSCALE)
-    bboxes_detected, trainingFrames = bgEstimate(path, alpha=2, mask_roi=None, colorspace='YUV')
+    bboxes_detected, trainingFrames = bgEstimate(path, alpha=2, mask_roi=mask_roi, algo = 'Mog2')
 
     bboxes_gt, num_instances_gt = get_gt_bboxes()
     # get the number of instances in the validation split (needed to calculate the number of FN and the recall)
