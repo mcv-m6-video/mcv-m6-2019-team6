@@ -24,23 +24,6 @@ parser.add_argument('--trained_model_path', type=str, default='',help='')
 parser.add_argument('--save_dir', type=str, default='',help='')
 parser.add_argument('--min_confidence', type=float, default=0.9,help='')
 parser.add_argument('--frames_dir', type=str, default='../datasets/AICity_data/train/S03/c010/vdo.avi',help='')
-# parser.add_argument('--video_dir', type=str, default='../datasets/AICity_data/train/S03/c010/vdo.avi',help='')
-
-class_names = ['BG', 'person', 'bicycle', 'car', 'motorcycle', 'airplane',
-               'bus', 'train', 'truck', 'boat', 'traffic light',
-               'fire hydrant', 'stop sign', 'parking meter', 'bench', 'bird',
-               'cat', 'dog', 'horse', 'sheep', 'cow', 'elephant', 'bear',
-               'zebra', 'giraffe', 'backpack', 'umbrella', 'handbag', 'tie',
-               'suitcase', 'frisbee', 'skis', 'snowboard', 'sports ball',
-               'kite', 'baseball bat', 'baseball glove', 'skateboard',
-               'surfboard', 'tennis racket', 'bottle', 'wine glass', 'cup',
-               'fork', 'knife', 'spoon', 'bowl', 'banana', 'apple',
-               'sandwich', 'orange', 'broccoli', 'carrot', 'hot dog', 'pizza',
-               'donut', 'cake', 'chair', 'couch', 'potted plant', 'bed',
-               'dining table', 'toilet', 'tv', 'laptop', 'mouse', 'remote',
-               'keyboard', 'cell phone', 'microwave', 'oven', 'toaster',
-               'sink', 'refrigerator', 'book', 'clock', 'vase', 'scissors',
-               'teddy bear', 'hair drier', 'toothbrush']
 
 # Root directory of the project
 ROOT_DIR = os.getcwd()
@@ -54,7 +37,6 @@ COCO_MODEL_PATH = os.path.join(ROOT_DIR, "mask_rcnn_coco.h5")
 # Download COCO trained weights from Releases if needed
 if not os.path.exists(COCO_MODEL_PATH):
     utils.download_trained_weights(COCO_MODEL_PATH)
-
 
 class CarsConfig(Config):
     """Configuration for training on the car shapes dataset.
@@ -106,21 +88,14 @@ def get_ax(rows=1, cols=1, size=8):
 
 class CarsDataset(utils.Dataset):
 
-    def load_data(self, count, height, width):
-        """Generate the requested number of synthetic images.
-        count: number of images to generate.
-        height, width: the size of the generated images.
-        """
+    def load_data(self, dataset_dir, height, width):
         # Add classes
         self.add_class("cars", 1, "car")
 
         # Add images
-        # Generate random specifications of images (i.e. color and
-        # list of shapes sizes and locations). This is more compact than
-        # actual images. Images are generated on the fly in load_image().
         index = 0
         for filename in os.listdir(DATASET_DIR):
-            self.add_image("cars", image_id=index, path=DATASET_DIR +'/'+filename,
+            self.add_image("cars", image_id=index, path=dataset_dir +'/'+filename,
                             width=width, height=height
                             # rois=rois,
                             # labels=labels
@@ -129,13 +104,13 @@ class CarsDataset(utils.Dataset):
 
 # Training dataset
 dataset_train = CarsDataset()
-dataset_train.load_data(500, config.IMAGE_SHAPE[0], config.IMAGE_SHAPE[1])
+dataset_train.load_data(DATASET_DIR +'train', config.IMAGE_SHAPE[0], config.IMAGE_SHAPE[1])
 dataset_train.prepare()
 
 # Validation dataset
-# dataset_val = CarsDataset()
-# dataset_val.load_shapes(50, config.IMAGE_SHAPE[0], config.IMAGE_SHAPE[1])
-# dataset_val.prepare()
+dataset_val = CarsDataset()
+dataset_train.load_data(DATASET_DIR +'test', config.IMAGE_SHAPE[0], config.IMAGE_SHAPE[1])
+dataset_val.prepare()
 
 # Load and display random samples
 image_ids = np.random.choice(dataset_train.image_ids, 4)
@@ -185,4 +160,3 @@ model.train(dataset_train, dataset_val,
 
 if __name__ == '__main__':
     FLAGS, unparsed = parser.parse_known_args()
-    detect(FLAGS.trained_model_path, FLAGS.video_dir, FLAGS.save_dir, FLAGS.min_confidence)
