@@ -41,7 +41,7 @@ def bbox_iou(src_bboxA, src_bboxB):
         iou = 0.0
 
     # return the intersection over union value
-    return iou, id
+    return iou, id, src_bboxB
 
 def read_xml_annotations(annotations_path):
     files = os.listdir(annotations_path)
