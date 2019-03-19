@@ -74,7 +74,7 @@ def show_tracked_detections(tracked_detections, max_id, video_dir):
             
         cv2.namedWindow('output',cv2.WINDOW_NORMAL)
         cv2.imshow('output', frame)
-        cv2.waitKey()
+        cv2.waitKey(10)
 
 
 
@@ -88,14 +88,28 @@ if __name__ == "__main__":
     path_labels = args.labels_dir
     path_video = args.video_dir
 
+    classes_of_interest = ['car', 'truck']
+
     detections_dict = dict()
+
     for filename in os.listdir(path_labels):
         detections = pickle.load(open(path_labels + filename, "rb"))
+        cp_det = copy.deepcopy(detections)
         frame_idx = filename.split(".")[0]
         if frame_idx in detections_dict.keys():
-            detections_dict[frame_idx].append(detections)
+            for box, score, category in zip(detections[0], detections[1], detections[2]):
+                if category not in classes_of_interest:
+                    cp_det[0].remove(box)
+                    cp_det[1].remove(score)
+                    cp_det[2].remove(category)
+            detections_dict[frame_idx].append(cp_det)
         else:
-            detections_dict[frame_idx] = detections
+            for box, score, category in zip(detections[0], detections[1], detections[2]):
+                if category not in classes_of_interest:
+                    cp_det[0].remove(box)
+                    cp_det[1].remove(score)
+                    cp_det[2].remove(category)
+            detections_dict[frame_idx] = cp_det
 
     sorted_by_value = sorted(detections_dict.items(), key=lambda kv: int(kv[0]))
 
