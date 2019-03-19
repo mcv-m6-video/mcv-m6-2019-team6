@@ -11,6 +11,8 @@ import matplotlib.pyplot as plt
 import argparse
 import pickle
 
+from utils import read_xml_annotations
+
 sys.path.append('Mask_RCNN')
 
 from Mask_RCNN.export_model import export
@@ -30,7 +32,8 @@ ROOT_DIR = os.getcwd()
 # Directory to save logs and trained model
 MODEL_DIR = os.path.join(ROOT_DIR, "logs")
 
-DATASET_DIR = './frames'
+DATASET_DIR = './frames/'
+ANNOTATIONS_DIR = './annotations/'
 
 # Local path to trained weights file
 COCO_MODEL_PATH = os.path.join(ROOT_DIR, "mask_rcnn_coco.h5")
@@ -92,15 +95,34 @@ class CarsDataset(utils.Dataset):
         # Add classes
         self.add_class("cars", 1, "car")
 
+        bboxes = read_xml_annotations(ANNOTATIONS_DIR)
         # Add images
-        index = 0
-        for filename in os.listdir(DATASET_DIR):
-            self.add_image("cars", image_id=index, path=dataset_dir +'/'+filename,
-                            width=width, height=height
-                            # rois=rois,
-                            # labels=labels
+        frame = 0
+        for filename in os.listdir(dataset_dir):
+            self.add_image("cars", image_id=frame, path=dataset_dir +'/'+filename,
+                            width=width, height=height,
+                            shapes=bboxes[str(frame)]
                             )
-            index +=1
+            frame +=1
+
+    def load_mask(self, image_id):
+        """Generate instance masks for shapes of the given image ID.
+        """
+        info = self.image_info[image_id]
+        shapes = info['shapes']
+        count = len(shapes)
+        mask = np.zeros([1080, 1920, count], dtype=np.uint8)
+        print (mask.shape)
+        for i, (_, x1, y1, width, height, a) in enumerate(info['shapes']):
+            mask[:,:,i:i+1] = cv2.rectangle(mask[:,:,i:i+1], (x1, y1), (x1 + width,y1 + height), (1), -1)
+            # cv2.imshow("image", mask)
+            # cv2.waitKey()
+            # mask[:, :, i:i + 1] =  cv2.rectangle(mask[:, :, i:i + 1], (x1, y1),
+            #                       (x1 + width,y1 + height), (255), -1)
+        # Map class names to class IDs.
+        mask = cv2.resize(mask, (info['height'], info['width']))
+        class_ids = np.array([self.class_names.index(s[0]) for s in shapes])
+        return mask, class_ids.astype(np.int32)
 
 # Training dataset
 dataset_train = CarsDataset()
@@ -117,6 +139,7 @@ image_ids = np.random.choice(dataset_train.image_ids, 4)
 for image_id in image_ids:
     image = dataset_train.load_image(image_id)
     mask, class_ids = dataset_train.load_mask(image_id)
+    print (class_ids)
     visualize.display_top_masks(image, mask, class_ids, dataset_train.class_names)
 
 # Create model in training mode
