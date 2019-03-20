@@ -21,6 +21,14 @@ from Mask_RCNN import visualize
 from Mask_RCNN import utils
 import Mask_RCNN.model as modellib
 
+import skimage.color
+import skimage.io
+
+import neptune
+context = neptune.Context()
+context.integrate_with_tensorflow()
+
+
 parser   = argparse.ArgumentParser()
 parser.add_argument('--trained_model_path', type=str, default='',help='')
 parser.add_argument('--save_dir', type=str, default='',help='')
@@ -32,11 +40,14 @@ ROOT_DIR = os.getcwd()
 # Directory to save logs and trained model
 MODEL_DIR = os.path.join(ROOT_DIR, "logs")
 
-DATASET_DIR = './frames/'
-ANNOTATIONS_DIR = './annotations/'
+# DATASET_DIR = './frames/'
+# ANNOTATIONS_DIR = './annotations/'
+DATASET_DIR = './data/frames/'
+ANNOTATIONS_DIR = './data/annotations/'
 
 # Local path to trained weights file
-COCO_MODEL_PATH = os.path.join(ROOT_DIR, "mask_rcnn_coco.h5")
+# COCO_MODEL_PATH = os.path.join(ROOT_DIR, "mask_rcnn_coco.h5")
+COCO_MODEL_PATH = 'mask_rcnn_coco.h5'
 # Download COCO trained weights from Releases if needed
 if not os.path.exists(COCO_MODEL_PATH):
     utils.download_trained_weights(COCO_MODEL_PATH)
@@ -98,12 +109,24 @@ class CarsDataset(utils.Dataset):
         bboxes = read_xml_annotations(ANNOTATIONS_DIR)
         # Add images
         frame = 0
-        for filename in os.listdir(dataset_dir):
+        for filename in sorted(os.listdir(dataset_dir)):
             self.add_image("cars", image_id=frame, path=dataset_dir +'/'+filename,
                             width=width, height=height,
                             shapes=bboxes[str(frame)]
                             )
             frame +=1
+    
+    def load_image(self, image_id):
+        """Load the specified image and return a [H,W,3] Numpy array.
+        """
+        info = self.image_info[image_id]
+        # Load image
+        image = skimage.io.imread(self.image_info[image_id]['path'])
+        # If grayscale. Convert to RGB for consistency.
+        if image.ndim != 3:
+            image = skimage.color.gray2rgb(image)
+        image = cv2.resize(image, (info['height'], info['width']))
+        return image
 
     def load_mask(self, image_id):
         """Generate instance masks for shapes of the given image ID.
@@ -112,13 +135,15 @@ class CarsDataset(utils.Dataset):
         shapes = info['shapes']
         count = len(shapes)
         mask = np.zeros([1080, 1920, count], dtype=np.uint8)
-        print (mask.shape)
         for i, (_, x1, y1, width, height, a) in enumerate(info['shapes']):
-            mask[:,:,i:i+1] = cv2.rectangle(mask[:,:,i:i+1], (x1, y1), (x1 + width,y1 + height), (1), -1)
-            # cv2.imshow("image", mask)
-            # cv2.waitKey()
-            # mask[:, :, i:i + 1] =  cv2.rectangle(mask[:, :, i:i + 1], (x1, y1),
-            #                       (x1 + width,y1 + height), (255), -1)
+            mask[y1:y1+width, x1:x1+width, i] = 1
+            image = self.load_image(image_id)
+            image = cv2.resize(image, (1920, 1080))
+            image = cv2.rectangle(image, (x1, y1), (x1 + width,y1 + height), (255,0,0), 10)
+            print (image.shape)
+            print (mask.shape)
+            cv2.imshow("image", image)
+            cv2.waitKey()
         # Map class names to class IDs.
         mask = cv2.resize(mask, (info['height'], info['width']))
         class_ids = np.array([self.class_names.index(s[0]) for s in shapes])
@@ -131,7 +156,7 @@ dataset_train.prepare()
 
 # Validation dataset
 dataset_val = CarsDataset()
-dataset_train.load_data(DATASET_DIR +'test', config.IMAGE_SHAPE[0], config.IMAGE_SHAPE[1])
+dataset_val.load_data(DATASET_DIR +'test', config.IMAGE_SHAPE[0], config.IMAGE_SHAPE[1])
 dataset_val.prepare()
 
 # Load and display random samples
