@@ -70,8 +70,8 @@ class CarsConfig(Config):
 
     # Use small images for faster training. Set the limits of the small side
     # the large side, and that determines the image shape.
-    # IMAGE_MIN_DIM = 128
-    # IMAGE_MAX_DIM = 128
+    # IMAGE_MIN_DIM = 1080
+    IMAGE_MAX_DIM = 512
 
     # Use smaller anchors because our image and objects are small
     # RPN_ANCHOR_SCALES = (8, 16, 32, 64, 128)  # anchor side in pixels
@@ -125,7 +125,7 @@ class CarsDataset(utils.Dataset):
         # If grayscale. Convert to RGB for consistency.
         if image.ndim != 3:
             image = skimage.color.gray2rgb(image)
-        image = cv2.resize(image, (info['height'], info['width']))
+        # image = cv2.resize(image, (info['height'], info['width']))
         return image
 
     def load_mask(self, image_id):
@@ -136,16 +136,16 @@ class CarsDataset(utils.Dataset):
         count = len(shapes)
         mask = np.zeros([1080, 1920, count], dtype=np.uint8)
         for i, (_, x1, y1, width, height, a) in enumerate(info['shapes']):
-            mask[y1:y1+width, x1:x1+width, i] = 1
-            image = self.load_image(image_id)
-            image = cv2.resize(image, (1920, 1080))
-            image = cv2.rectangle(image, (x1, y1), (x1 + width,y1 + height), (255,0,0), 10)
-            print (image.shape)
-            print (mask.shape)
-            cv2.imshow("image", image)
-            cv2.waitKey()
+            mask[y1:y1+height, x1:x1+width, i] = 1
+            # image = self.load_image(image_id)
+            # image = cv2.resize(image, (1920, 1080))
+            # image = cv2.rectangle(image, (x1, y1), (x1 + width,y1 + height), (255,0,0), 10)
+            # print (image.shape)
+            # print (mask.shape)
+            # cv2.imshow("image", image)
+            # cv2.waitKey()
         # Map class names to class IDs.
-        mask = cv2.resize(mask, (info['height'], info['width']))
+        # mask = cv2.resize(mask, (info['height'], info['width']))
         class_ids = np.array([self.class_names.index(s[0]) for s in shapes])
         return mask, class_ids.astype(np.int32)
 
@@ -161,11 +161,14 @@ dataset_val.prepare()
 
 # Load and display random samples
 image_ids = np.random.choice(dataset_train.image_ids, 4)
-for image_id in image_ids:
-    image = dataset_train.load_image(image_id)
-    mask, class_ids = dataset_train.load_mask(image_id)
-    print (class_ids)
-    visualize.display_top_masks(image, mask, class_ids, dataset_train.class_names)
+# for image_id in image_ids:
+#     image = dataset_train.load_image(image_id)
+#     mask, class_ids = dataset_train.load_mask(image_id)
+#     cv2.namedWindow("window", cv2.WINDOW_NORMAL)
+#     cv2.imshow("window", image*mask[:,:,6:9])
+#     cv2.waitKey()
+#     print (class_ids)
+#     visualize.display_top_masks(image, mask, class_ids, dataset_train.class_names)
 
 # Create model in training mode
 model = modellib.MaskRCNN(mode="training", config=config,
