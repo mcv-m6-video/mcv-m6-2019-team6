@@ -18,39 +18,47 @@ min_confidence      = 0.8
 
 def draw_boxes(img, bounding_boxes, scores, classes, min_confidence):
     for box, score,category in zip(bounding_boxes, scores, classes):
-    	if score >= min_confidence and category in classes_of_interest:
-	        cv2.rectangle(img,(box[1],box[0]),(box[3],box[2]),(0,0,255),3)		
+        if score >= min_confidence and category in classes_of_interest:
+            cv2.rectangle(img,(box[1],box[0]),(box[3],box[2]),(0,0,255),3)		
     return img
 
 
+def draw_boxes_gt(img, bounding_boxes):
+    for box in bounding_boxes:
+        _, xtl, ytl, height, width, _, id_det = box
+        cv2.rectangle(img,(xtl,ytl),(xtl+width,ytl+height),(255,0,0),3)		
+    return img
 
 def demo(video_dir, labels_dir):
 
     capture = cv2.VideoCapture(video_dir)
     gt_bboxes = read_xml_annotations('annotations/')
-    list_gt_bboxes = list(gt_bboxes.values())
-    #print(list_gt_bboxes)
-    frame_idx = 0
+    
+    list_gt_bboxes = []
+    for i in range(len(gt_bboxes)):
+    	list_gt_bboxes.append(gt_bboxes[str(i)])
 
+    frame_idx = 0
+    
     while True:
         success, frame = capture.read()
         if not success:
             break
-        gt_boxes   =  list_gt_bboxes[frame_idx]
-        frame_idx += 1
         
-        labels_file    = os.path.join(labels_dir, str(frame_idx)+'.pickle') 
+        gt_boxes     = list_gt_bboxes[frame_idx]
+        frame_idx   += 1
+        labels_file  = os.path.join(labels_dir, str(frame_idx)+'.pickle') 
 
         with open(labels_file, "rb") as fp:
             labels = pickle.load(fp)
 
         bounding_boxes, scores, classes = labels         
+        
         frame = draw_boxes(frame, bounding_boxes, scores, classes, min_confidence )
+        frame = draw_boxes_gt(frame, gt_boxes)
 
         cv2.imshow('output', frame)
         cv2.waitKey(10)
-
-
 
 
 if __name__ == '__main__':
