@@ -4,7 +4,7 @@ from random import randrange, random
 import numpy as np
 from xml.dom import minidom
 import os
-#import motmetrics as mm
+import motmetrics as mm
 
 def bbox_iou(src_bboxA, src_bboxB):
     # compute the intersection over union of two bboxes
@@ -74,14 +74,16 @@ def compute_idf1(list_gt_bboxes, tracked_detections):
         mm_gt_bboxes = []
 
         for gt_bbox in gt_elements_frame:
-            mm_gt_bboxes.append([(gt_bbox[1]+gt_bbox[3])/2, (gt_bbox[2]+gt_bbox[4])/2, gt_bbox[3]-gt_bbox[1],
-                                 gt_bbox[4]-gt_bbox[2]])
+            # mm_gt_bboxes.append([(gt_bbox[1]+gt_bbox[3])/2, (gt_bbox[2]+gt_bbox[4])/2, gt_bbox[3]-gt_bbox[1],
+            #                      gt_bbox[4]-gt_bbox[2]])
+            mm_gt_bboxes.append([gt_bbox[2], gt_bbox[1], gt_bbox[3], gt_bbox[4]])
 
             gt_ids.append(gt_bbox[-1])
 
         for det_bbox in det_elements_frame:
-            mm_det_bboxes.append([(det_bbox[1]+det_bbox[3])/2, (det_bbox[2]+det_bbox[4])/2, det_bbox[3]-det_bbox[1],
-                                 det_bbox[4]-det_bbox[2]])
+            # mm_det_bboxes.append([(det_bbox[1]+det_bbox[3])/2, (det_bbox[2]+det_bbox[4])/2, det_bbox[3]-det_bbox[1],
+            #                      det_bbox[4]-det_bbox[2]])
+            mm_det_bboxes.append([det_bbox[2], det_bbox[1], det_bbox[3], det_bbox[4]])
 
             det_ids.append(det_bbox[-1])
 
