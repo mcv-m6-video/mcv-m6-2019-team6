@@ -21,7 +21,8 @@ parser.add_argument('--video_dir', type=str, default='../datasets/AICity_data/tr
 parser.add_argument('--annotations_dir', type=str, default='./annotations/', help='')
 parser.add_argument('--visualize', type=bool, default=False, help='')
 
-def overlap_tracking(sorted_detections, video_dir, threshold = 0.5):
+
+def overlap_tracking(sorted_detections, threshold=0.5):
 
     assigned_id = 0
     track_dict = dict()
@@ -120,6 +121,7 @@ if __name__ == "__main__":
     detections_dict = dict()
 
     gt_bboxes = read_xml_annotations(args.annotations_dir)
+    min_confidence = 0.65
 
     for filename in os.listdir(path_labels):
         detections = pickle.load(open(path_labels + filename, "rb"))
@@ -127,14 +129,14 @@ if __name__ == "__main__":
         frame_idx = filename.split(".")[0]
         if frame_idx in detections_dict.keys():
             for box, score, category in zip(detections[0], detections[1], detections[2]):
-                if category not in classes_of_interest:
+                if category not in classes_of_interest or score < min_confidence:
                     cp_det[0].remove(box)
                     cp_det[1].remove(score)
                     cp_det[2].remove(category)
             detections_dict[frame_idx].append(cp_det)
         else:
             for box, score, category in zip(detections[0], detections[1], detections[2]):
-                if category not in classes_of_interest:
+                if category not in classes_of_interest or score < min_confidence:
                     cp_det[0].remove(box)
                     cp_det[1].remove(score)
                     cp_det[2].remove(category)
@@ -146,7 +148,7 @@ if __name__ == "__main__":
     for element in sorted_by_value:
         sorted_detections[element[0]] = element[1]
 
-    tracked_detections, max_id = overlap_tracking(sorted_detections, path_video, threshold=0.75)
+    tracked_detections, max_id = overlap_tracking(sorted_detections, threshold=0.5)
 
     #### IDF1 computation
     list_gt_bboxes = list(gt_bboxes.values())
