@@ -4,7 +4,7 @@ from random import randrange, random
 import numpy as np
 from xml.dom import minidom
 import os
-import motmetrics as mm
+#import motmetrics as mm
 
 def bbox_iou(src_bboxA, src_bboxB):
     # compute the intersection over union of two bboxes
@@ -52,8 +52,8 @@ def read_xml_annotations(annotations_path):
             ytl = int(float(element.getAttribute('ytl')))
             xbr = int(float(element.getAttribute('xbr')))
             ybr = int(float(element.getAttribute('ybr')))
-            width = ybr - ytl
-            height = xbr - xtl
+            height = ybr - ytl
+            width  = xbr - xtl
             id_det = int(element.parentNode.getAttribute('id'))
 
             if frame in bboxes.keys():

@@ -5,6 +5,8 @@ from coco_class_names import class_names
 import argparse
 import os
 import random
+from utils import read_xml_annotations
+
 parser   = argparse.ArgumentParser()
 
 parser.add_argument('--video_dir', type=str, default='../datasets/AICity_data/train/S03/c010/vdo.avi',help='')
@@ -25,13 +27,18 @@ def draw_boxes(img, bounding_boxes, scores, classes, min_confidence):
 def demo(video_dir, labels_dir):
 
     capture = cv2.VideoCapture(video_dir)
+    gt_bboxes = read_xml_annotations('annotations/')
+    list_gt_bboxes = list(gt_bboxes.values())
+    #print(list_gt_bboxes)
     frame_idx = 0
 
     while True:
         success, frame = capture.read()
         if not success:
             break
+        gt_boxes   =  list_gt_bboxes[frame_idx]
         frame_idx += 1
+        
         labels_file    = os.path.join(labels_dir, str(frame_idx)+'.pickle') 
 
         with open(labels_file, "rb") as fp:
