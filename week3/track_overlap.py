@@ -12,7 +12,7 @@ import argparse
 import pickle
 import copy
 from matplotlib import colors
-from utils import bbox_iou, read_xml_annotations
+from utils import bbox_iou, read_xml_annotations, compute_idf1
 import motmetrics as mm
 
 parser = argparse.ArgumentParser()
@@ -27,36 +27,51 @@ def overlap_tracking(sorted_detections, video_dir, threshold = 0.5):
     track_dict = dict()
     whole_detections = []
 
-    for key, value in sorted_detections.items():  # value[0] = bboxes, value[1] = scores, value[2] = ids
+    for key, value in sorted_detections.items():  # value[0] = bboxes, value[1] = scores, value[2] = labels
         current_frame_detections = []
         if int(key) != 1:
             for n_det, bbox in enumerate(value[0]):
-                scores_and_ids = [bbox_iou(bbox, prev_frame_bbox) for prev_frame_bbox in whole_detections[int(key)-2]]
+                # Build bbox
+                confidence = value[1][n_det]
+                label = value[2][n_det]
+                bbox = [label]+bbox
+                bbox.append(confidence)
+
+                scores_and_ids = [bbox_iou(bbox[1:], prev_frame_bbox[1:]) for prev_frame_bbox in whole_detections[int(key)-2]]
                 max_in_list = max(scores_and_ids, key=lambda item: item[0])
                 max_score = max_in_list[0]
-                track_id = max_in_list[1]
-                match_prev_bbox = max_in_list[2][1]
+                match_prev_bbox = max_in_list[1][0:4]
+                track_id = max_in_list[1][-1]
 
                 # Check if the new bbox is more and less the same size as the previous one
-                current_size = (bbox[0]+bbox[3])*(bbox[1]+bbox[2])
+                current_size = (bbox[1]+bbox[4])*(bbox[2]+bbox[3])
                 prev_size = (match_prev_bbox[0]+match_prev_bbox[3])*(match_prev_bbox[1]+match_prev_bbox[2])
 
                 if max_score >= threshold and current_size >= 0.8*prev_size:
-                    current_frame_detections.append([track_id, bbox])
+                    bbox.append(track_id)
+                    current_frame_detections.append(bbox)
                 else:
-                    current_frame_detections.append([assigned_id, bbox])
+                    bbox.append(assigned_id)
+                    current_frame_detections.append(bbox)
                     assigned_id += 1
             whole_detections.append(current_frame_detections)
         else:
             for n_det, bbox in enumerate(value[0]):
-                current_frame_detections.append([assigned_id, bbox])
+                # Build bbox
+                confidence = value[1][n_det]
+                label = value[2][n_det]
+                bbox = [label]+bbox
+                bbox.append(confidence)
+                bbox.append(assigned_id)
+
+                current_frame_detections.append(bbox)
                 assigned_id += 1
             whole_detections.append(current_frame_detections)
 
     return whole_detections, assigned_id
 
 
-def show_tracked_detections(tracked_detections, max_id, video_dir):
+def show_tracked_detections(tracked_detections, video_dir):
     capture = cv2.VideoCapture(video_dir)
     frame_idx = 0
 
@@ -71,21 +86,21 @@ def show_tracked_detections(tracked_detections, max_id, video_dir):
         frame_idx += 1
 
         for ind_detection in tracked_detections[frame_idx-1]:
-            if ind_detection[0] not in dict_colors.keys():
+            if ind_detection[-1] not in dict_colors.keys():
                 random.shuffle(color_array)
                 random_color = colors.to_rgb(color_array[0])
                 random_color = tuple([255 * x for x in random_color])
-                dict_colors[ind_detection[0]] = random_color
+                dict_colors[ind_detection[-1]] = random_color
 
-            frame = cv2.rectangle(frame, (ind_detection[1][1], ind_detection[1][0]),
-                                  (ind_detection[1][3], ind_detection[1][2]), dict_colors[ind_detection[0]], 3)
-            frame = cv2.putText(frame, str(ind_detection[0]), (ind_detection[1][1]-5, ind_detection[1][0]-5),
+            frame = cv2.rectangle(frame, (ind_detection[2], ind_detection[1]),
+                                  (ind_detection[4], ind_detection[3]), dict_colors[ind_detection[-1]], 3)
+            frame = cv2.putText(frame, str(ind_detection[-1]), (ind_detection[2]-5, ind_detection[1]-5),
                                 cv2.FONT_HERSHEY_COMPLEX, 2, (255, 255, 255), 2, cv2.LINE_AA)
             frame = cv2.putText(frame, str(frame_idx), (50,50), cv2.FONT_HERSHEY_COMPLEX, 2, (0, 255, 0), 2, cv2.LINE_AA)
             
-        cv2.namedWindow('output',cv2.WINDOW_NORMAL)
+        cv2.namedWindow('output', cv2.WINDOW_NORMAL)
         cv2.imshow('output', frame)
-        cv2.waitKey()
+        cv2.waitKey(10)
 
 
 
@@ -133,5 +148,10 @@ if __name__ == "__main__":
 
     tracked_detections, max_id = overlap_tracking(sorted_detections, path_video, threshold=0.75)
 
+    #### IDF1 computation
+    list_gt_bboxes = list(gt_bboxes.values())
+    summary = compute_idf1(list_gt_bboxes, tracked_detections)
+    print(summary)
+
     if visualize is True:
-        show_tracked_detections(tracked_detections, max_id, path_video)
+        show_tracked_detections(tracked_detections, path_video)

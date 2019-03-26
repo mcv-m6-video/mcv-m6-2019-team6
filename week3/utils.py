@@ -4,6 +4,7 @@ from random import randrange, random
 import numpy as np
 from xml.dom import minidom
 import os
+import motmetrics as mm
 
 def bbox_iou(src_bboxA, src_bboxB):
     # compute the intersection over union of two bboxes
@@ -11,11 +12,6 @@ def bbox_iou(src_bboxA, src_bboxB):
     # where tl indicates the top left corner of the box.
     bboxA = copy.deepcopy(src_bboxA)
     bboxB = copy.deepcopy(src_bboxB)
-
-    id = 0
-    if len(bboxB) == 2:
-        id = bboxB[0]
-        bboxB = bboxB[1]
 
 
     bboxA[2] = bboxA[0] + bboxA[2]
@@ -41,7 +37,7 @@ def bbox_iou(src_bboxA, src_bboxB):
         iou = 0.0
 
     # return the intersection over union value
-    return iou, id, src_bboxB
+    return iou, src_bboxB
 
 def read_xml_annotations(annotations_path):
     files = os.listdir(annotations_path)
@@ -65,3 +61,33 @@ def read_xml_annotations(annotations_path):
             else:
                 bboxes[frame] = [['car', xtl, ytl, height, width, random(), id_det]]
     return bboxes
+
+
+def compute_idf1(list_gt_bboxes, tracked_detections):
+    """The lists passed are of the form [label, tly, tlx, width, height, confidence, id]"""
+
+    acc = mm.MOTAccumulator(auto_id=True)
+    for gt_elements_frame, det_elements_frame in zip(list_gt_bboxes, tracked_detections):
+        det_ids = []
+        gt_ids = []
+        mm_det_bboxes = []
+        mm_gt_bboxes = []
+
+        for gt_bbox in gt_elements_frame:
+            mm_gt_bboxes.append([(gt_bbox[1]+gt_bbox[3])/2, (gt_bbox[2]+gt_bbox[4])/2, gt_bbox[3]-gt_bbox[1],
+                                 gt_bbox[4]-gt_bbox[2]])
+
+            gt_ids.append(gt_bbox[-1])
+
+        for det_bbox in det_elements_frame:
+            mm_det_bboxes.append([(det_bbox[1]+det_bbox[3])/2, (det_bbox[2]+det_bbox[4])/2, det_bbox[3]-det_bbox[1],
+                                 det_bbox[4]-det_bbox[2]])
+
+            det_ids.append(det_bbox[-1])
+
+        distances_gt_det = mm.distances.iou_matrix(mm_gt_bboxes, mm_det_bboxes, max_iou=1.)
+        acc.update(gt_ids, det_ids, distances_gt_det)
+
+    mh = mm.metrics.create()
+    summary = mh.compute(acc, metrics=['idf1'], name='acc')
+    return summary
