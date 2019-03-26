@@ -58,9 +58,10 @@ def read_xml_annotations(annotations_path):
             ybr = int(float(element.getAttribute('ybr')))
             width = ybr - ytl
             height = xbr - xtl
+            id_det = int(element.parentNode.getAttribute('id'))
 
             if frame in bboxes.keys():
-                bboxes[frame].append(['car', xtl, ytl, height, width, random()])
+                bboxes[frame].append(['car', xtl, ytl, height, width, random(), id_det])
             else:
-                bboxes[frame] = [['car', xtl, ytl, height, width, random()]]
+                bboxes[frame] = [['car', xtl, ytl, height, width, random(), id_det]]
     return bboxes

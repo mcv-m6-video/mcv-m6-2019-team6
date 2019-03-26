@@ -12,11 +12,14 @@ import argparse
 import pickle
 import copy
 from matplotlib import colors
-from utils import bbox_iou
+from utils import bbox_iou, read_xml_annotations
+import motmetrics as mm
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--labels_dir', type=str, default='rcnn_detections_before_tuning/', help='')
 parser.add_argument('--video_dir', type=str, default='../datasets/AICity_data/train/S03/c010/vdo.avi',help='')
+parser.add_argument('--annotations_dir', type=str, default='./annotations/', help='')
+parser.add_argument('--visualize', type=bool, default=False, help='')
 
 def overlap_tracking(sorted_detections, video_dir, threshold = 0.5):
 
@@ -95,10 +98,13 @@ if __name__ == "__main__":
     args, _ = parser.parse_known_args()
     path_labels = args.labels_dir
     path_video = args.video_dir
+    visualize = args.visualize
 
     classes_of_interest = ['car', 'truck']
 
     detections_dict = dict()
+
+    gt_bboxes = read_xml_annotations(args.annotations_dir)
 
     for filename in os.listdir(path_labels):
         detections = pickle.load(open(path_labels + filename, "rb"))
@@ -126,4 +132,6 @@ if __name__ == "__main__":
         sorted_detections[element[0]] = element[1]
 
     tracked_detections, max_id = overlap_tracking(sorted_detections, path_video, threshold=0.75)
-    show_tracked_detections(tracked_detections, max_id, path_video)
+
+    if visualize is True:
+        show_tracked_detections(tracked_detections, max_id, path_video)
