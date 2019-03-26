@@ -36,7 +36,7 @@ def save_detections_for_map(image, im_idx, bounding_boxes, scores, gt_boxes):
     images_dir            = 'mAP/input/images-optional/'
 
     # -------------- save image
-    cv2.imwrite(os.path.join(images_dir,str(im_idx)+'.jpeg'),image)
+    #cv2.imwrite(os.path.join(images_dir,str(im_idx)+'.jpeg'),image)
     # -------------- save gorund truth
     labels_file = os.path.join(ground_truth_dir, str(im_idx)+'.txt')
     file = open(labels_file, "w") 
