@@ -13,8 +13,8 @@ parser.add_argument('--video_dir', type=str, default='../datasets/AICity_data/tr
 parser.add_argument('--labels_dir', type=str, default='rcnn_detections_before_tuning/',help='')
 
 
-classes_of_interest = ['car','bus','truck']
-min_confidence      = 0.8
+classes_of_interest = ['car','bus','truck','bicycle', 'motorcycle']
+min_confidence      = 0.7
 
 def draw_boxes(img, bounding_boxes, scores, classes, min_confidence):
     for box, score,category in zip(bounding_boxes, scores, classes):
@@ -26,7 +26,7 @@ def draw_boxes(img, bounding_boxes, scores, classes, min_confidence):
 def draw_boxes_gt(img, bounding_boxes):
     for box in bounding_boxes:
         _, xtl, ytl, height, width, _, id_det = box
-        cv2.rectangle(img,(xtl,ytl),(xtl+width,ytl+height),(255,0,0),3)		
+        cv2.rectangle(img,(xtl,ytl),(xtl+width,ytl+height),(0,255,0),6)		
     return img
 
 
