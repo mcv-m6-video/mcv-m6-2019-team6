@@ -4,7 +4,7 @@ from random import randrange, random
 import numpy as np
 from xml.dom import minidom
 import os
-#import motmetrics as mm
+import motmetrics as mm
 
 def bbox_iou(src_bboxA, src_bboxB):
     # compute the intersection over union of two bboxes

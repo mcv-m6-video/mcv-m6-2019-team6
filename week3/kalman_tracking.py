@@ -36,6 +36,7 @@ def read_detections(labels_file):
 def main(video_dir, labels_dir, visualize):
 
     capture = cv2.VideoCapture(video_dir)
+
     frame_idx = 0
     kalman_tracker = Sort()
 
@@ -69,6 +70,7 @@ def main(video_dir, labels_dir, visualize):
         whole_video_detections.append(current_frame_detections)
 
         if visualize is True:
+            cv2.imwrite('tracking_videos/kalman/image%04i.jpg' % frame_idx, frame)
             cv2.imshow('output', frame)
             cv2.waitKey(10)
 

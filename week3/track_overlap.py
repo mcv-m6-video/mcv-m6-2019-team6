@@ -98,7 +98,8 @@ def show_tracked_detections(tracked_detections, video_dir):
             frame = cv2.putText(frame, str(ind_detection[-1]), (ind_detection[2]-5, ind_detection[1]-5),
                                 cv2.FONT_HERSHEY_COMPLEX, 2, (255, 255, 255), 2, cv2.LINE_AA)
             frame = cv2.putText(frame, str(frame_idx), (50,50), cv2.FONT_HERSHEY_COMPLEX, 2, (0, 255, 0), 2, cv2.LINE_AA)
-            
+
+        cv2.imwrite('tracking_videos/overlap/image%04i.jpg' % frame_idx, frame)
         cv2.namedWindow('output', cv2.WINDOW_NORMAL)
         cv2.imshow('output', frame)
         cv2.waitKey(10)
