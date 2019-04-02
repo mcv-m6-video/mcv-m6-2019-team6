@@ -80,9 +80,9 @@ def main():
     frame1 = cv2.cvtColor(frame1_rgb, cv2.COLOR_RGB2GRAY)
     frame2 = cv2.cvtColor(frame2_rgb, cv2.COLOR_RGB2GRAY)
 
-    motion_blocks, motion = block_matching(frame1, frame2, block_size=16, search_area=64)
+    motion_blocks, motion = block_matching(frame1, frame2, block_size=16, search_area=32)
 
-    msen, pepn, img_err, vect_err = flow_metrics(motion.astype(np.uint8), gt)
+    msen, pepn, img_err, vect_err = flow_metrics(motion.astype(np.float32), gt)
     print("MSEN: ", msen, " - PEPN: ", pepn)
 
     for motion_block in motion_blocks:
