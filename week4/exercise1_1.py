@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 from metrics import flow_metrics
+from math import sqrt
 
 
 matching_methods = ['cv2.TM_CCOEFF_NORMED', 'cv2.TM_CCORR_NORMED']
@@ -31,9 +32,9 @@ def block_matching(frame1, frame2, block_size=16, search_area=64, method='cv2.TM
     height = frame1.shape[1]
     width = frame1.shape[0]
     if method == 'cv2.TM_CCORR_NORMED':
-        threshold = 0.9998
+        threshold = 0.9997
     else:
-        threshold = 0.995
+        threshold = 0.997
 
     search_area = int(search_area/2)
     motion_blocks = []  # for plotting purposes
@@ -80,22 +81,34 @@ def main():
     frame1 = cv2.cvtColor(frame1_rgb, cv2.COLOR_RGB2GRAY)
     frame2 = cv2.cvtColor(frame2_rgb, cv2.COLOR_RGB2GRAY)
 
-    motion_blocks, motion = block_matching(frame1, frame2, block_size=16, search_area=32)
+    for block_size in [16]:  # search space
+        for search_area in [32]:
+            if search_area <= block_size: continue
+            motion_blocks, motion = block_matching(frame1, frame2, block_size=block_size, search_area=search_area)
 
-    msen, pepn, img_err, vect_err = flow_metrics(motion.astype(np.float32), gt)
-    print("MSEN: ", msen, " - PEPN: ", pepn)
+            msen, pepn, img_err, vect_err = flow_metrics(motion.astype(np.float32), gt)
+            print("Search area ", search_area, "block size", block_size, "MSEN: ", msen, " - PEPN: ", pepn)
 
+    plt.imshow(img_err)
+    plt.show()
+
+    motion_module = np.sqrt(motion[:, :, 1] ** 2 + motion[:, :, 0] ** 2)
+    plt.imshow(motion_module)
+    plt.title("module of the motion vectors")
+    plt.show()
+
+    max_motion_module = np.max(motion_module)
+    min_motion_module = np.min(motion_module)
     for motion_block in motion_blocks:
         center = motion_block[0]
         displacement = motion_block[1]
+        green = 255 * ((sqrt(displacement[0]**2 + displacement[1]**2) - min_motion_module) /
+                       (max_motion_module - min_motion_module))*1
         cv2.arrowedLine(frame1_rgb, (center[1], center[0]),
-                        (center[1]+displacement[1]*2, center[0]+displacement[0]*2), (255, 0, 0), 1)
+                        (center[1]+displacement[1]*2, center[0]+displacement[0]*2), (0, green, 255), 1)
 
     cv2.imshow("motion", frame1_rgb)
-
-    plt.imshow(np.sqrt(motion[:, :, 1] ** 2 + motion[:, :, 0] ** 2))
-    plt.title("module of the motion vectors")
-    plt.show()
+    cv2.waitKey()
 
     return
 
