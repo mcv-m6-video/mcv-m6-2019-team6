@@ -2,7 +2,6 @@ import numpy as np
 
 
 def flow_metrics(pred, gt):
-
     flowExist  = (gt[: ,: ,2] == 1)
     pred_flow  = pred[flowExist]
     gt_flow    = gt[flowExist]
@@ -20,3 +19,4 @@ def flow_metrics(pred, gt):
     pepn = 100 * (1 - np.mean(hit))
 
     return msen, pepn, img_err, vect_err
+
