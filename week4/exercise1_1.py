@@ -4,8 +4,7 @@ import matplotlib.pyplot as plt
 from metrics import flow_metrics
 
 
-matching_methods = ['cv2.TM_CCOEFF', 'cv2.TM_CCOEFF_NORMED', 'cv2.TM_CCORR',
-                    'cv2.TM_CCORR_NORMED', 'cv2.TM_SQDIFF', 'cv2.TM_SQDIFF_NORMED']
+matching_methods = ['cv2.TM_CCOEFF_NORMED', 'cv2.TM_CCORR_NORMED']
 
 
 def read_file(path):
@@ -31,6 +30,10 @@ def read_file(path):
 def block_matching(frame1, frame2, block_size=16, search_area=64, method='cv2.TM_CCORR_NORMED'):
     height = frame1.shape[1]
     width = frame1.shape[0]
+    if method == 'cv2.TM_CCORR_NORMED':
+        threshold = 0.9998
+    else:
+        threshold = 0.995
 
     search_area = int(search_area/2)
     motion_blocks = []  # for plotting purposes
@@ -46,13 +49,19 @@ def block_matching(frame1, frame2, block_size=16, search_area=64, method='cv2.TM
 
             meth = eval(method)
             res = cv2.matchTemplate(search_space, block, meth)
-            _, _, _, max_loc = cv2.minMaxLoc(res)  # max_loc gives the upper left corner of the sliding window
+            _, max_val, _, max_loc = cv2.minMaxLoc(res)  # max_loc gives the upper left corner of the sliding window
 
-            # TODO: the displacement at the borders is wrong because the size of the search area changes, the center of the area is different
-            cent = int(search_area-(block_size/2))  # center of the search space (in its coordinates)
-            displacement = np.array(max_loc) - np.array([cent, cent])  # distance from the highest response to the
-                                                                       # center of the search space
-
+            if max_val < threshold:
+                cent_i = cent_j = int(search_area-(block_size/2))  # upper left corner of the block in the search area
+                # checks in case the upper left corner of the block is displaced (in the borders)
+                if center_i - search_area < 0:
+                    cent_i = cent_i + (center_i - search_area)
+                if center_j - search_area < 0:
+                    cent_j = cent_j + (center_j - search_area)
+                displacement = np.array(max_loc) - np.array([cent_j, cent_i])  # distance from the highest response to
+                                                                               # the center of the search space
+            else:
+                displacement = [0, 0]
             motion_blocks.append(([center_i, center_j], [displacement[1], displacement[0]]))
             motion[i:i+block_size, j:j+block_size] = np.array([displacement[1], displacement[0], 1])
 
