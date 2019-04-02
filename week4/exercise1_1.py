@@ -5,7 +5,7 @@ from metrics import flow_metrics
 from math import sqrt
 
 
-matching_methods = ['cv2.TM_CCOEFF_NORMED', 'cv2.TM_CCORR_NORMED']
+matching_methods = ['cv2.TM_CCOEFF_NORMED', 'cv2.TM_CCORR_NORMED', 'cv2.TM_SQDIFF', 'cv2.TM_SQDIFF_NORMED']
 
 
 def read_file(path):
@@ -28,13 +28,20 @@ def read_file(path):
     return result
 
 
-def block_matching(frame1, frame2, block_size=16, search_area=64, method='cv2.TM_CCORR_NORMED'):
+def block_matching(frame1, frame2, block_size=16, search_area=64, method='cv2.TM_CCORR_NORMED', bwd=True):
     height = frame1.shape[1]
     width = frame1.shape[0]
     if method == 'cv2.TM_CCORR_NORMED':
         threshold = 0.9997
-    else:
+    elif method == 'cv2.TM_COEFF_NORMED':
         threshold = 0.997
+    else:
+        threshold = 99999999999
+
+    if bwd:
+        temp = frame1
+        frame1 = frame2
+        frame2 = temp
 
     search_area = int(search_area/2)
     motion_blocks = []  # for plotting purposes
@@ -59,8 +66,11 @@ def block_matching(frame1, frame2, block_size=16, search_area=64, method='cv2.TM
                     cent_i = cent_i + (center_i - search_area)
                 if center_j - search_area < 0:
                     cent_j = cent_j + (center_j - search_area)
-                displacement = np.array(max_loc) - np.array([cent_j, cent_i])  # distance from the highest response to
-                                                                               # the center of the search space
+
+                if not bwd:  # distance from the highest response to the center of the search space
+                    displacement = np.array(np.array(max_loc) - [cent_j, cent_i])
+                else:
+                    displacement = np.array([cent_j, cent_i]) - np.array(max_loc)
             else:
                 displacement = [0, 0]
             motion_blocks.append(([center_i, center_j], [displacement[1], displacement[0]]))
@@ -84,7 +94,7 @@ def main():
     for block_size in [16]:  # search space
         for search_area in [32]:
             if search_area <= block_size: continue
-            motion_blocks, motion = block_matching(frame1, frame2, block_size=block_size, search_area=search_area)
+            motion_blocks, motion = block_matching(frame1, frame2, block_size=block_size, search_area=search_area, bwd=True)
 
             msen, pepn, img_err, vect_err = flow_metrics(motion.astype(np.float32), gt)
             print("Search area ", search_area, "block size", block_size, "MSEN: ", msen, " - PEPN: ", pepn)
