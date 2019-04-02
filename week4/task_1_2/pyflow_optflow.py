@@ -16,10 +16,38 @@ parser.add_argument(
     help='Visualize (i.e. save) output of flow.')
 parser.add_argument('-alg', type=str, default='pyflow', help='')
 
-def coarse2Fine(prev_frame, curr_frame, args):
+def read_file(path):
+    """Read an optical flow map from disk
+    Optical flow maps are stored in disk as 3-channel uint16 PNG images,
+    following the method described in the KITTI optical flow dataset 2012
+    (http://www.cvlibs.net/datasets/kitti/eval_stereo_flow.php?benchmark=flow).
+    Returns:
+      numpy array with shape [height, width, 3]. The first and second channels
+      denote the corresponding optical flow 2D vector (u, v). The third channel
+      is a mask denoting if an optical flow 2D vector exists for that pixel.
+      Vector components u and v values range [-512..512].
+    """
+    data = cv2.imread(path, -1).astype('float32')
+    result = np.empty(data.shape, dtype='float32')
+    result[:,:,0] = (data[:,:,2] - 2**15) / 64
+    result[:,:,1] = (data[:,:,1] - 2**15) / 64
+    result[:,:,2] = data[:,:,0]
 
-    prev_array = np.asarray(prev_frame)
-    curr_array = np.asarray(curr_frame)
+    return result
+
+
+def coarse2Fine(prev_frame, curr_frame, args):
+    prev_frame_gray = cv2.cvtColor(prev_frame, cv2.COLOR_BGR2GRAY)
+    curr_frame_gray = cv2.cvtColor(curr_frame, cv2.COLOR_BGR2GRAY)
+
+    prev_frame_gray = prev_frame_gray[:, :, np.newaxis]
+    curr_frame_gray = curr_frame_gray[:, :, np.newaxis]
+
+    prev_array = np.asarray(prev_frame_gray)
+    curr_array = np.asarray(curr_frame_gray)
+
+    # prev_array = np.asarray(prev_frame)
+    # curr_array = np.asarray(curr_frame)
 
     prev_array = prev_array.astype(float) / 255.
     curr_array = curr_array.astype(float) / 255.
@@ -31,7 +59,7 @@ def coarse2Fine(prev_frame, curr_frame, args):
     nOuterFPIterations = 7
     nInnerFPIterations = 1
     nSORIterations = 30
-    colType = 0  # 0 or default:RGB, 1:GRAY (but pass gray image with shape (h,w,1))
+    colType = 1  # 0 or default:RGB, 1:GRAY (but pass gray image with shape (h,w,1))
 
     s = time.time()
     u, v, im2W = pyflow.coarse2fine_flow(
@@ -44,7 +72,7 @@ def coarse2Fine(prev_frame, curr_frame, args):
     # np.save('examples/outFlow.npy', flow)
 
     if args.viz:
-        hsv = np.zeros(prev_array.shape, dtype=np.uint8)
+        hsv = np.zeros(prev_frame.shape, dtype=np.uint8)
         hsv[:, :, 0] = 255
         hsv[:, :, 1] = 255
         mag, ang = cv2.cartToPolar(flow[..., 0], flow[..., 1])
@@ -56,7 +84,8 @@ def coarse2Fine(prev_frame, curr_frame, args):
         cv2.imshow("optical flow", rgb)
         cv2.waitKey()
 
-    previous_frame = current_frame
+    return flow
+
 
 def farneback(prev_frame, curr_frame, args):
     curr_gray = cv2.cvtColor(curr_frame, cv2.COLOR_BGR2GRAY)
@@ -67,6 +96,7 @@ def farneback(prev_frame, curr_frame, args):
     if args.viz:
         cv2.imshow('Farneback', draw_flow(curr_gray, flow))
         cv2.waitKey()
+
 
 def draw_flow(img, flow, step=8):
     h, w = img.shape[:2]
@@ -100,21 +130,32 @@ if __name__ == '__main__':
     frame_idx = 0
 
     opt_flow_alg = switch_alg(args.alg)
-    resize_factor = 0.35
 
-    current_frame = None
-    previous_frame = None
-    while True:
-        success, frame = capture.read()
-        if not success:
-            break
-        frame_idx += 1
-        if frame_idx == 1:
-            previous_frame = frame
-            previous_frame = cv2.resize(previous_frame, (0, 0), fx=resize_factor, fy=resize_factor)
-            continue
-        else:
-            current_frame = frame
-            current_frame = cv2.resize(current_frame, (0, 0), fx=resize_factor, fy=resize_factor)
+    frame1_rgb = cv2.imread('../000045_10.png')
+    frame2_rgb = cv2.imread('../000045_11.png')
 
-        opt_flow_alg(previous_frame, current_frame, args)
+    gt = read_file('../gt_000045_10.png')
+
+    flow = opt_flow_alg(frame1_rgb, frame2_rgb, args)
+
+
+    #### Whole Video Sequence
+    # resize_factor = 0.35
+    #
+    # current_frame = None
+    # previous_frame = None
+    # while True:
+    #     success, frame = capture.read()
+    #     if not success:
+    #         break
+    #     frame_idx += 1
+    #     if frame_idx == 1:
+    #         previous_frame = frame
+    #         previous_frame = cv2.resize(previous_frame, (0, 0), fx=resize_factor, fy=resize_factor)
+    #         continue
+    #     else:
+    #         current_frame = frame
+    #         current_frame = cv2.resize(current_frame, (0, 0), fx=resize_factor, fy=resize_factor)
+    #
+    #     opt_flow_alg(previous_frame, current_frame, args)
+    #####
