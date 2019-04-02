@@ -29,24 +29,24 @@ def read_file(path):
 
 
 def block_matching(frame1, frame2, block_size=16, search_area=64, method='cv2.TM_CCORR_NORMED'):
-    width = frame1.shape[1]
-    height = frame1.shape[0]
+    height = frame1.shape[1]
+    width = frame1.shape[0]
 
     search_area = int(search_area/2)
     motion_blocks = []  # for plotting purposes
     motion = np.zeros([frame1.shape[0], frame1.shape[1], 3])
-    for i in range(0, height, block_size):
-        for j in range(0, width, block_size):
+    for i in range(0, width, block_size):
+        for j in range(0, height, block_size):
             center_i = int(round(i+(block_size/2)))  # center i of the block
             center_j = int(round(j+(block_size/2)))  # center j of the block
             block = frame1[i:i+block_size, j:j+block_size]
             # search area in i goes from center_i-search_area/2 (if > 0) to center_i+search_area/2, and the same for j
-            search_space = frame2[max(0, center_i-search_area):center_i+search_area,
-                                  max(0, center_j-search_area):center_j+search_area]
+            search_space = frame2[max(0, center_i-search_area):min(center_i+search_area, frame1.shape[0]),
+                                  max(0, center_j-search_area):min(center_j+search_area, frame1.shape[1])]
 
             meth = eval(method)
             res = cv2.matchTemplate(search_space, block, meth)
-            _, _, _, max_loc = cv2.minMaxLoc(res)  # max_loc gives the upper left corner
+            _, _, _, max_loc = cv2.minMaxLoc(res)  # max_loc gives the upper left corner of the sliding window
 
             # TODO: the displacement at the borders is wrong because the size of the search area changes, the center of the area is different
             cent = int(search_area-(block_size/2))  # center of the search space (in its coordinates)
@@ -83,9 +83,8 @@ def main():
                         (center[1]+displacement[1]*2, center[0]+displacement[0]*2), (255, 0, 0), 1)
 
     cv2.imshow("motion", frame1_rgb)
-    cv2.waitKey()
 
-    plt.imshow(np.sqrt(motion[:, :, 1] ** 2 + motion[:, :, 1] ** 2))
+    plt.imshow(np.sqrt(motion[:, :, 1] ** 2 + motion[:, :, 0] ** 2))
     plt.title("module of the motion vectors")
     plt.show()
 
