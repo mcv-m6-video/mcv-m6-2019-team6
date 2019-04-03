@@ -33,7 +33,7 @@ def block_matching(frame1, frame2, block_size=16, search_area=64, method='cv2.TM
     width = frame1.shape[0]
     if method == 'cv2.TM_CCORR_NORMED':
         threshold = 0.9997
-    elif method == 'cv2.TM_COEFF_NORMED':
+    elif method == 'cv2.TM_CCOEFF_NORMED':
         threshold = 0.997
     else:
         threshold = 99999999999
