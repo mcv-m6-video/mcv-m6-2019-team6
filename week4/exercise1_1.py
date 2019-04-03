@@ -91,8 +91,8 @@ def main():
     frame1 = cv2.cvtColor(frame1_rgb, cv2.COLOR_RGB2GRAY)
     frame2 = cv2.cvtColor(frame2_rgb, cv2.COLOR_RGB2GRAY)
 
-    for block_size in [16]:  # search space
-        for search_area in [32]:
+    for block_size in [64]:  # search space
+        for search_area in [72]:
             if search_area <= block_size: continue
             motion_blocks, motion = block_matching(frame1, frame2, block_size=block_size, search_area=search_area, bwd=True)
 
@@ -115,7 +115,7 @@ def main():
         green = 255 * ((sqrt(displacement[0]**2 + displacement[1]**2) - min_motion_module) /
                        (max_motion_module - min_motion_module))*1
         cv2.arrowedLine(frame1_rgb, (center[1], center[0]),
-                        (center[1]+displacement[1]*2, center[0]+displacement[0]*2), (0, green, 255), 1)
+                        (center[1]+displacement[1]*2, center[0]+displacement[0]*2), (0, green, 255), 1, tipLength=0.4)
 
     cv2.imshow("motion", frame1_rgb)
     cv2.waitKey()
