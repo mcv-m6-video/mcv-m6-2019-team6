@@ -75,7 +75,7 @@ The score were computed for frames from the KITTI dataset. It was discovered tha
 
 #### Video stabilisation using block-matching
 ![](images/stabilisation.png?raw=true)
-               ![](images/1.gif?raw=true)
+![](images/1.gif?raw=true)<div style="text-align:center">
 
 
 #### Using optical flow to improve performance of tracking:
