@@ -1,12 +1,20 @@
 import os
 import cv2
 import numpy as np
+from mrcnn_detector import detect
+import argparse
+import pickle
 
-path_sequences = 'aic19-track1-mtmc-train/'
-train_folders_path = 'aic19-track1-mtmc-train/siamese_train/'
+
+parser   = argparse.ArgumentParser()
+parser.add_argument('--detect', type=bool, default=False, help='')
+parser.add_argument('--save_crops', type=bool, default=False, help='')
+path_sequences = '../../aic19-track1-mtmc-train/'
+train_folders_path = '../../aic19-track1-mtmc-train/siamese_train/'
 ids_array = np.zeros(1000, dtype=np.uint)
 
-def save_detections(path_video, gt_file, roi):
+
+def save_crops(path_video, gt_file, roi):
     with open(gt_file) as f:
         data = f.readlines()
 
@@ -39,6 +47,8 @@ def save_detections(path_video, gt_file, roi):
 
 
 if __name__ == "__main__":
+    FLAGS, unparsed = parser.parse_known_args()
+
     if not os.path.exists(path_sequences):
         print('There is not such folder %s' % path_sequences)
         exit(0)
@@ -62,5 +72,13 @@ if __name__ == "__main__":
 
                     # Filenames = roi.jpg, vdo.avi, calibration.txt
 
-                    save_detections(os.path.join(parent_dir, filenames[1]), gt_file_path, os.path.join(parent_dir,
-                                                                                                       filenames[0]))
+                    if FLAGS.detect:
+                        save_dir = parent_dir + os.sep + 'detections'+os.sep
+                        if not os.path.exists(save_dir):
+                            os.makedirs(save_dir)
+
+                        detect('mask_rcnn_coco.h5', os.path.join(parent_dir, filenames[1]), save_dir, min_confidence=0.5)
+
+                    if FLAGS.save_crop:
+                        save_crops(os.path.join(parent_dir, filenames[1]), gt_file_path, os.path.join(parent_dir,
+                                                                                                      filenames[0]))
