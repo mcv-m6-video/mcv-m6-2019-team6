@@ -4,7 +4,7 @@
 
 # Video Surveillance for Road Traffic Monitoring
 
- This repository contains information about the work done during the project of Module 6 of Master in Computer Vision 2018.
+ This repository contains information about the work done during the project of Module 6 of [Master in Computer Vision](http://pagines.uab.cat/mcv/) 2018.
 
  ## Usage
 
@@ -16,7 +16,6 @@ Before trying the code run
 pip3 install -r requirements.txt
 ```
 Python 3.5 or higher is needed.
-
 
 
 ## Week 1 Video annotation and scoring metrics
@@ -81,9 +80,11 @@ The idea was to combine maximum overlap tracking algorithm with velocity vector 
 ##### Optical flow computed for tested sequence:
 ![](images/opt_flow_cars.gif?raw=true)
 
-## Week 5
+## Week 5 Multi-target camera tracking
+#### Multi-target single camera tracking (MTSC)
+#### Multi-target single camera tracking (MTMC)
 
-### Team 6
+### Authors
 - Basem Elbarashy
 - Sergi Garcia
 - Manuel Rey Area
