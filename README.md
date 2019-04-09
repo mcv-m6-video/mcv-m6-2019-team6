@@ -77,7 +77,7 @@ The score were computed for frames from the KITTI dataset. It was discovered tha
 ![](images/stabilisation.png?raw=true)
 
 <p align="center">
- <img width="460" height="300" src=images/1.gif?raw=true>
+ <src=images/1.gif?raw=true>
 </p>
 
 #### Using optical flow to improve performance of tracking:
