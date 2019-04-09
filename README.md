@@ -75,8 +75,9 @@ The score were computed for frames from the KITTI dataset. It was discovered tha
 
 #### Video stabilisation using block-matching
 ![](images/stabilisation.png?raw=true)
-![](images/1.gif?raw=true)<div style="text-align:center">
-
+<p align="center">
+![](images/1.gif?raw=true)
+</p>
 
 #### Using optical flow to improve performance of tracking:
 The idea was to combine maximum overlap tracking algorithm with velocity vector computed for each detection. This approach allows to distinguish overlapping objects moving in different directions.
