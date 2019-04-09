@@ -55,7 +55,8 @@ It allowed to improve the scores (tested with IoU>0.5):
 |Fine-tuned|0.461|
 
 The maximum overlap tracking and Kalman filter were tested:
-|Method|IDF1|
+
+| Method | IDF1 |
 |-|-|
 |Max-overlap|0.686|
 |Kalman-filter|0.612|
@@ -66,6 +67,7 @@ The maximum overlap tracking and Kalman filter were tested:
 ![](images/opt_flow1.png?raw=true)
 
 The score were computed for frames from the KITTI dataset. It was discovered that the axes in optical flow computation should be swapped to properly fit the ground truth data.
+
 | Axes order | Avg. PEPN | Avg. MSEN|
 |-|-|-|
 |Normal|0.79|11.58|
