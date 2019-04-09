@@ -4,7 +4,19 @@
 
 # Video Surveillance for Road Traffic Monitoring
 
- This repository contains information about the work done during the project of Module 6 of Master in Computer Vision.
+ This repository contains information about the work done during the project of Module 6 of Master in Computer Vision 2018.
+
+ ## Usage
+
+ Each week's directory contains the code with implementation and data to test the tasks and compute the scores. In [annotations](annotations) directory the are .xml files containing annotations to cars and bikes (along with unique ids) to the video sequence used during the project.
+
+ ### Install dependencies
+Before trying the code run
+```
+pip3 install -r requirements.txt
+```
+Python 3.5 or higher is needed.
+
 
 
 ## Week 1 Video annotation and scoring metrics
@@ -44,16 +56,17 @@ It allowed to improve the scores (tested with IoU>0.5):
 |Fine-tuned|0.461|
 
 The maximum overlap tracking and Kalman filter were tested:
-| Method | IDF1 |
+|Method|IDF1|
 |-|-|
-|Max overlap|0.686|
-|Kalman filter|0.612|
+|Max-overlap|0.686|
+|Kalman-filter|0.612|
 
 ## Week 4 Optical flow, video stabilisation, tracking
 ### 
 #### Implement optical flow using block-matching
 ![](images/opt_flow1.png?raw=true)
 
+The score were computed for frames from the KITTI dataset. It was discovered that the axes in optical flow computation should be swapped to properly fit the ground truth data.
 | Axes order | Avg. PEPN | Avg. MSEN|
 |-|-|-|
 |Normal|0.79|11.58|
@@ -62,8 +75,10 @@ The maximum overlap tracking and Kalman filter were tested:
 #### Video stabilisation using block-matching
 ![](images/stabilisation.png?raw=true)
 
+
 #### Using optical flow to improve performance of tracking:
 The idea was to combine maximum overlap tracking algorithm with velocity vector computed for each detection. This approach allows to distinguish overlapping objects moving in different directions.
+##### Optical flow computed for tested sequence:
 ![](images/opt_flow_cars.gif?raw=true)
 
 ## Week 5
