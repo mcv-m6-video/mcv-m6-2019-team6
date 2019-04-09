@@ -2,9 +2,10 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 from metrics import flow_metrics
+from math import sqrt
 
 
-matching_methods = ['cv2.TM_CCOEFF_NORMED', 'cv2.TM_CCORR_NORMED']
+matching_methods = ['cv2.TM_CCOEFF_NORMED', 'cv2.TM_CCORR_NORMED', 'cv2.TM_SQDIFF', 'cv2.TM_SQDIFF_NORMED']
 
 
 def read_file(path):
@@ -27,13 +28,20 @@ def read_file(path):
     return result
 
 
-def block_matching(frame1, frame2, block_size=16, search_area=64, method='cv2.TM_CCORR_NORMED'):
+def block_matching(frame1, frame2, block_size=16, search_area=64, method='cv2.TM_CCORR_NORMED', bwd=True):
     height = frame1.shape[1]
     width = frame1.shape[0]
     if method == 'cv2.TM_CCORR_NORMED':
-        threshold = 0.9998
+        threshold = 0.9997
+    elif method == 'cv2.TM_COEFF_NORMED':
+        threshold = 0.997
     else:
-        threshold = 0.995
+        threshold = 99999999999
+
+    if bwd:
+        temp = frame1
+        frame1 = frame2
+        frame2 = temp
 
     search_area = int(search_area/2)
     motion_blocks = []  # for plotting purposes
@@ -58,8 +66,11 @@ def block_matching(frame1, frame2, block_size=16, search_area=64, method='cv2.TM
                     cent_i = cent_i + (center_i - search_area)
                 if center_j - search_area < 0:
                     cent_j = cent_j + (center_j - search_area)
-                displacement = np.array(max_loc) - np.array([cent_j, cent_i])  # distance from the highest response to
-                                                                               # the center of the search space
+
+                if not bwd:  # distance from the highest response to the center of the search space
+                    displacement = np.array(np.array(max_loc) - [cent_j, cent_i])
+                else:
+                    displacement = np.array([cent_j, cent_i]) - np.array(max_loc)
             else:
                 displacement = [0, 0]
             motion_blocks.append(([center_i, center_j], [displacement[1], displacement[0]]))
@@ -80,22 +91,34 @@ def main():
     frame1 = cv2.cvtColor(frame1_rgb, cv2.COLOR_RGB2GRAY)
     frame2 = cv2.cvtColor(frame2_rgb, cv2.COLOR_RGB2GRAY)
 
-    motion_blocks, motion = block_matching(frame1, frame2, block_size=16, search_area=64)
+    for block_size in [16]:  # search space
+        for search_area in [32]:
+            if search_area <= block_size: continue
+            motion_blocks, motion = block_matching(frame1, frame2, block_size=block_size, search_area=search_area, bwd=True)
 
-    msen, pepn, img_err, vect_err = flow_metrics(motion.astype(np.uint8), gt)
-    print("MSEN: ", msen, " - PEPN: ", pepn)
+            msen, pepn, img_err, vect_err = flow_metrics(motion.astype(np.float32), gt)
+            print("Search area ", search_area, "block size", block_size, "MSEN: ", msen, " - PEPN: ", pepn)
 
+    plt.imshow(img_err)
+    plt.show()
+
+    motion_module = np.sqrt(motion[:, :, 1] ** 2 + motion[:, :, 0] ** 2)
+    plt.imshow(motion_module)
+    plt.title("module of the motion vectors")
+    plt.show()
+
+    max_motion_module = np.max(motion_module)
+    min_motion_module = np.min(motion_module)
     for motion_block in motion_blocks:
         center = motion_block[0]
         displacement = motion_block[1]
+        green = 255 * ((sqrt(displacement[0]**2 + displacement[1]**2) - min_motion_module) /
+                       (max_motion_module - min_motion_module))*1
         cv2.arrowedLine(frame1_rgb, (center[1], center[0]),
-                        (center[1]+displacement[1]*2, center[0]+displacement[0]*2), (255, 0, 0), 1)
+                        (center[1]+displacement[1]*2, center[0]+displacement[0]*2), (0, green, 255), 1)
 
     cv2.imshow("motion", frame1_rgb)
-
-    plt.imshow(np.sqrt(motion[:, :, 1] ** 2 + motion[:, :, 0] ** 2))
-    plt.title("module of the motion vectors")
-    plt.show()
+    cv2.waitKey()
 
     return
 
