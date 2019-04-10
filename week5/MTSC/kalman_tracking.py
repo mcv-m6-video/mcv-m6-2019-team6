@@ -18,7 +18,7 @@ classes_of_interest = ['car', 'bus', 'truck']
 min_confidence      = 0.65
 
 
-def run_track(video_dir, dict_detections, visualize):
+def run_track(video_dir, dict_detections, visualize, wait_time=0):
 
     # dets = []
     # for key,value in dict_detections.items():
@@ -59,7 +59,7 @@ def run_track(video_dir, dict_detections, visualize):
 
         current_frame_detections = []
         for track_det in trackers:
-            track_det = track_det.astype(np.uint32)
+            track_det = track_det.astype(np.int64)
             current_frame_detections.append(['car', track_det[0], track_det[1], track_det[2],
                                              track_det[3], track_det[4]])
 
@@ -68,20 +68,20 @@ def run_track(video_dir, dict_detections, visualize):
                 y = int(track_det[1])
                 w = int(track_det[2])
                 h = int(track_det[3])
-                if y < frame.shape[1] and h<frame.shape[1] and x<frame.shape[0] and w<frame.shape[0]:
-                    cv2.rectangle(frame, (x, y), (w, h), (0, 0, 255), 3)
+                # if y < frame.shape[1] and h<frame.shape[1] and x<frame.shape[0] and w<frame.shape[0]:
+                cv2.rectangle(frame, (x, y), (w, h), (0, 0, 255), 3)
 
-                    font = cv2.FONT_HERSHEY_DUPLEX
-                    placement = (w + 10, h + 10)
-                    font_scale = 1
-                    font_color = (0, 255, 0)
-                    line_type = 2
+                font = cv2.FONT_HERSHEY_DUPLEX
+                placement = (w + 10, h + 10)
+                font_scale = 1
+                font_color = (0, 255, 0)
+                line_type = 2
 
-                    cv2.putText(frame, str(track_det[4]), placement, font, font_scale, font_color, line_type)
+                cv2.putText(frame, str(track_det[4]), placement, font, font_scale, font_color, line_type)
 
         if visualize:
             cv2.imshow('output', frame)
-            cv2.waitKey()
+            cv2.waitKey(wait_time)
 
         whole_video_detections.append(current_frame_detections)
 

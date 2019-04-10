@@ -74,25 +74,25 @@ def block_matching(frame1, frame2, block_size=16, search_area=64, method='cv2.TM
             else:
                 displacement = [0, 0]
             motion_blocks.append(([center_i, center_j], [displacement[1], displacement[0]]))
-            motion[i:i+block_size, j:j+block_size] = np.array([displacement[1], displacement[0], 1])
+            motion[i:i+block_size, j:j+block_size] = np.array([displacement[0], displacement[1], 1])
 
     return motion_blocks, motion
 
 
 def main():
 
-    frame1_rgb = cv2.imread('000045_10.png')
-    frame2_rgb = cv2.imread('000045_11.png')
-    gt = read_file('gt_000045_10.png')
-    # frame1_rgb = cv2.imread('000157_10.png')
-    # frame2_rgb = cv2.imread('000157_11.png')
-    # gt = read_file('gt_000157_10.png')
+    # frame1_rgb = cv2.imread('000045_10.png')
+    # frame2_rgb = cv2.imread('000045_11.png')
+    # gt = read_file('gt_000045_10.png')
+    frame1_rgb = cv2.imread('000157_10.png')
+    frame2_rgb = cv2.imread('000157_11.png')
+    gt = read_file('gt_000157_10.png')
 
     frame1 = cv2.cvtColor(frame1_rgb, cv2.COLOR_RGB2GRAY)
     frame2 = cv2.cvtColor(frame2_rgb, cv2.COLOR_RGB2GRAY)
 
-    for block_size in [64]:  # search space
-        for search_area in [72]:
+    for block_size in [16]:  # search space
+        for search_area in [32]:
             if search_area <= block_size: continue
             motion_blocks, motion = block_matching(frame1, frame2, block_size=block_size, search_area=search_area, bwd=True)
 
@@ -115,7 +115,7 @@ def main():
         green = 255 * ((sqrt(displacement[0]**2 + displacement[1]**2) - min_motion_module) /
                        (max_motion_module - min_motion_module))*1
         cv2.arrowedLine(frame1_rgb, (center[1], center[0]),
-                        (center[1]+displacement[1]*2, center[0]+displacement[0]*2), (0, green, 255), 1, tipLength=0.4)
+                        (center[1]+displacement[1]*2, center[0]+displacement[0]*2), (0, green, 255), 2, tipLength=0.4)
 
     cv2.imshow("motion", frame1_rgb)
     cv2.waitKey()
