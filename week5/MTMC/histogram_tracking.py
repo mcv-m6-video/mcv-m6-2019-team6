@@ -3,17 +3,18 @@ import sys
 import cv2
 import numpy as np
 import argparse
-from track_overlap import overlap_tracking, show_tracked_detections
 from kalman_tracking import run_track
 sys.path.insert(0, '../MTSC')
-from utils import compute_idf1
 from histogram import compute_histogram,compare_histogram_blocks
-import matplotlib.pyplot as plt
+from mot import compute_scores
+
 
 parser   = argparse.ArgumentParser()
 parser.add_argument('--tracking_type', type=str, default='kalman', help='')
 parser.add_argument('--visualize', action='store_false', help='')
 path_sequences = '../../aic19-track1-mtmc-train/'
+
+
 
 
 def get_detections(detections_path, gt_file_path, min_area=None):
@@ -127,7 +128,7 @@ if __name__ == "__main__":
 
             tracks.append(track)
 
-
+            compute_scores(gt_bboxes, track)
 
 
 

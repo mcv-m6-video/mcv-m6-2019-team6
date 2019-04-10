@@ -26,7 +26,7 @@ def run_track(video_dir, dict_detections, visualize, wait_time=0, get_first_appe
     kalman_tracker = Sort()
 
     whole_video_detections = []
-    first_appearance=dict()
+    first_appearance = dict()
     while True:
         success, frame = capture.read()
         if not success:
