@@ -32,34 +32,35 @@ def overlap_tracking(sorted_detections, threshold=0.4):
         if int(key) != 1:
             for n_det, bbox in enumerate(value):
                 # Build bbox
-                confidence = bbox[-1]
-                label = 'car'
-                bbox = [label]+bbox
+                if len(bbox) != 0:
+                    confidence = bbox[-1]
+                    label = 'car'
+                    bbox = [label]+bbox
+                    previous_dect = whole_detections.get(str(int(key) - 1))
+                    if len(previous_dect) > 0 and len(previous_dect[0]) != 0:
+                        scores_and_ids = [bbox_iou(bbox[1:], prev_frame_bbox[1:]) for prev_frame_bbox in previous_dect]
+                        max_in_list = max(scores_and_ids, key=lambda item: item[0])
+                        max_score = max_in_list[0]
+                        match_prev_bbox = max_in_list[1][0:4]
+                        track_id = max_in_list[1][-1]
 
-                if whole_detections.get(str(int(key)-1)) is not None:
-                    previous_dect = whole_detections.get(str(int(key)-1))
-                    # print(list(whole_detections.get(str(int(key)-1))))
-                    scores_and_ids = [bbox_iou(bbox[1:], prev_frame_bbox[1:]) for prev_frame_bbox in previous_dect]
-                    max_in_list = max(scores_and_ids, key=lambda item: item[0])
-                    max_score = max_in_list[0]
-                    match_prev_bbox = max_in_list[1][0:4]
-                    track_id = max_in_list[1][-1]
+                        # Check if the new bbox is more and less the same size as the previous one
+                        current_size = (bbox[1]+bbox[4])*(bbox[2]+bbox[3])
+                        prev_size = (match_prev_bbox[0]+match_prev_bbox[3])*(match_prev_bbox[1]+match_prev_bbox[2])
 
-                    # Check if the new bbox is more and less the same size as the previous one
-                    current_size = (bbox[1]+bbox[4])*(bbox[2]+bbox[3])
-                    prev_size = (match_prev_bbox[0]+match_prev_bbox[3])*(match_prev_bbox[1]+match_prev_bbox[2])
-
-                    if max_score >= threshold and current_size >= 0.8*prev_size:
-                        bbox.append(track_id)
-                        current_frame_detections.append(bbox)
+                        if max_score >= threshold and current_size >= 0.8*prev_size:
+                            bbox.append(track_id)
+                            current_frame_detections.append(bbox)
+                        else:
+                            bbox.append(assigned_id)
+                            current_frame_detections.append(bbox)
+                            assigned_id += 1
                     else:
                         bbox.append(assigned_id)
                         current_frame_detections.append(bbox)
                         assigned_id += 1
                 else:
-                    bbox.append(assigned_id)
-                    current_frame_detections.append(bbox)
-                    assigned_id += 1
+                    current_frame_detections.append([])
 
             if key in whole_detections.keys():
                 whole_detections[key].append(current_frame_detections)
@@ -67,14 +68,17 @@ def overlap_tracking(sorted_detections, threshold=0.4):
                 whole_detections[key] = current_frame_detections
         else:
             for n_det, bbox in enumerate(value):
-                # Build bbox
-                confidence = bbox[-1]
-                label = 'car'
-                bbox = [label]+bbox
-                bbox.append(assigned_id)
+                if len(bbox) != 0:
+                    # Build bbox
+                    confidence = bbox[-1]
+                    label = 'car'
+                    bbox = [label]+bbox
+                    bbox.append(assigned_id)
 
-                current_frame_detections.append(bbox)
-                assigned_id += 1
+                    current_frame_detections.append(bbox)
+                    assigned_id += 1
+                else:
+                    current_frame_detections.append([])
             if key in whole_detections.keys():
                 whole_detections[key].append(current_frame_detections)
             else:
@@ -98,25 +102,26 @@ def show_tracked_detections(tracked_detections, video_dir):
         frame_idx += 1
 
         for ind_detection in tracked_detections[frame_idx-1]:
-            if ind_detection[-1] not in dict_colors.keys():
-                random.shuffle(color_array)
-                random_color = colors.to_rgb(color_array[0])
-                random_color = tuple([255 * x for x in random_color])
-                dict_colors[ind_detection[-1]] = random_color
+            if len(ind_detection) != 0:
+                if ind_detection[-1] not in dict_colors.keys():
+                    random.shuffle(color_array)
+                    random_color = colors.to_rgb(color_array[0])
+                    random_color = tuple([255 * x for x in random_color])
+                    dict_colors[ind_detection[-1]] = random_color
 
-            x = int(ind_detection[1])
-            y = int(ind_detection[2])
-            w = int(ind_detection[3])
-            h = int(ind_detection[4])
-            frame = cv2.rectangle(frame, (x, y), (x+w,y+h), dict_colors[ind_detection[-1]], 3)
-            frame = cv2.putText(frame, str(ind_detection[-1]), (x-5, y-5),
-                                cv2.FONT_HERSHEY_COMPLEX, 2, (255, 255, 255), 2, cv2.LINE_AA)
-            frame = cv2.putText(frame, str(frame_idx), (50,50), cv2.FONT_HERSHEY_COMPLEX, 2, (0, 255, 0), 2, cv2.LINE_AA)
+                x = int(ind_detection[1])
+                y = int(ind_detection[2])
+                w = int(ind_detection[3])
+                h = int(ind_detection[4])
+                frame = cv2.rectangle(frame, (x, y), (x+w,y+h), dict_colors[ind_detection[-1]], 3)
+                frame = cv2.putText(frame, str(ind_detection[-1]), (x-5, y-5),
+                                    cv2.FONT_HERSHEY_COMPLEX, 2, (255, 255, 255), 2, cv2.LINE_AA)
+                frame = cv2.putText(frame, str(frame_idx), (50,50), cv2.FONT_HERSHEY_COMPLEX, 2, (0, 255, 0), 2, cv2.LINE_AA)
 
         # cv2.imwrite('tracking_videos/overlap/image%04i.jpg' % frame_idx, frame)
         cv2.namedWindow('output', cv2.WINDOW_NORMAL)
         cv2.imshow('output', frame)
-        cv2.waitKey()
+        cv2.waitKey(1)
 
 
 

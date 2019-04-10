@@ -7,6 +7,8 @@ from track_overlap import overlap_tracking, show_tracked_detections
 from kalman_tracking import run_track
 sys.path.insert(0, '../MTSC')
 from utils import compute_idf1
+from histogram import compute_histogram,compare_histogram_blocks
+import matplotlib.pyplot as plt
 
 parser   = argparse.ArgumentParser()
 parser.add_argument('--tracking_type', type=str, default='kalman', help='')
@@ -63,19 +65,70 @@ def get_detections(detections_path, gt_file_path, min_area=None):
 if __name__ == "__main__":
     for sequence in ['train/S01', 'train/S04']:
         camera_dirs = os.listdir(path_sequences + sequence)
-        # tracked_detections = []
+        reference_histograms = None
+        tracks = []
+
+        print("sequence: " + sequence)
         for camera_dir in camera_dirs:
-            dir = path_sequences + sequence + '/' + camera_dir
-            video_dir = dir + '/vdo.avi'
-            gt_path = dir + '/gt/gt.txt'
-            detections_path = dir + '/det/det_mask_rcnn.txt'
+            path = path_sequences + sequence + '/' + camera_dir
+            video_dir = path + '/vdo.avi'
+            gt_path = path + '/gt/gt.txt'
+            detections_path = path + '/det/det_mask_rcnn.txt'
 
             gt_bboxes, detections_bboxes = get_detections(detections_path, gt_path)
 
-            tracked = run_track(video_dir, detections_bboxes, False, wait_time=50)
-            print(tracked)
-            # tracked_detections, ids = overlap_tracking(gt_bboxes)
-            # show_tracked_detections(tracked_detections, video_dir)
+            # kalman tracker works better since we have more occlusions
+            track, first_detections = run_track(video_dir, detections_bboxes, False, wait_time=50, get_first_appearance=True)
+
+            # here we create a dict, the id of the car is the key and the value is the histogram. This is done for the
+            # first sequence to have a reference
+            if reference_histograms is None:
+                print("computing reference hist")
+                capture = cv2.VideoCapture(video_dir)
+                reference_histograms = dict()
+                for key in first_detections.keys():
+                    bbox = first_detections[key][1:5]
+                    frame_num = first_detections[key][5]
+                    capture.set(cv2.CAP_PROP_POS_FRAMES, frame_num)
+                    _, frame = capture.read()
+                    patch = frame[max(0, bbox[1]):max(0, bbox[3]), max(0, bbox[0]):max(0, bbox[2]), :]
+                    reference_histograms[key] = np.array(compute_histogram(patch))
+
+            # we compare the histograms of the detected cars in the other sequences with each detection from the
+            # first sequence, then we reassign the id of the detections to the most similar to the reference
+            else:
+                print("computing the other hists")
+                capture = cv2.VideoCapture(video_dir)
+                id_correspondence = dict()
+                for key in first_detections.keys():
+                    try:
+                        bbox = first_detections[key][1:5]
+                        frame_num = first_detections[key][5]
+                        capture.set(cv2.CAP_PROP_POS_FRAMES, frame_num)
+                        _, frame = capture.read()
+                        patch = frame[max(0, bbox[1]):max(0, bbox[3]), max(0, bbox[0]):max(0, bbox[2]), :]
+
+                        max_score = -999999999999
+                        new_id = -1
+                        for key2 in reference_histograms:
+                            current_hist = np.array(compute_histogram(patch))
+                            score = compare_histogram_blocks(reference_histograms[key2], current_hist)
+                            if score > max_score:
+                                max_score = score
+                                new_id = key2
+                        id_correspondence[str(key)] = new_id
+                    except:  # because fuck you opencv
+                        id_correspondence[str(key)] = key
+
+                # reassign the car id to the most similar one
+                for i, frame in enumerate(track):
+                    for j, detection in enumerate(track[i]):
+                        track[i][j][5] = id_correspondence[str(frame[j][5])]
+
+            tracks.append(track)
+
+
+
 
 
 

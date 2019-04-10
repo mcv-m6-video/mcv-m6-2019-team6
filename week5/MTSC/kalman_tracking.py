@@ -18,26 +18,15 @@ classes_of_interest = ['car', 'bus', 'truck']
 min_confidence      = 0.65
 
 
-def run_track(video_dir, dict_detections, visualize, wait_time=0):
+def run_track(video_dir, dict_detections, visualize, wait_time=0, get_first_appearance=False):
 
-    # dets = []
-    # for key,value in dict_detections.items():
-    #     bboxes_frame = []
-    #     for bbox in value:
-    #         x = int(bbox[0])
-    #         y = int(bbox[1])
-    #         w = int(bbox[2])
-    #         h = int(bbox[3])
-    #         to_append = [x,y,x+w,y+h]
-    #         bboxes_frame.append(to_append)
-    #     dets.append(bboxes_frame)
-    #
     capture = cv2.VideoCapture(video_dir)
 
     frame_idx = 0
     kalman_tracker = Sort()
 
     whole_video_detections = []
+    first_appearance=dict()
     while True:
         success, frame = capture.read()
         if not success:
@@ -48,12 +37,13 @@ def run_track(video_dir, dict_detections, visualize, wait_time=0):
         to_track = []
         if detections is not None:
             for bbox in detections:
-                x = int(bbox[0])
-                y = int(bbox[1])
-                w = int(bbox[2])
-                h = int(bbox[3])
-                to_append = [x,y,x+w,y+h]
-                to_track.append(to_append)
+                if len(bbox) != 0:
+                    x = int(bbox[0])
+                    y = int(bbox[1])
+                    w = int(bbox[2])
+                    h = int(bbox[3])
+                    to_append = [x,y,x+w,y+h]
+                    to_track.append(to_append)
 
         trackers = kalman_tracker.update(np.array(to_track))
 
@@ -62,6 +52,11 @@ def run_track(video_dir, dict_detections, visualize, wait_time=0):
             track_det = track_det.astype(np.int64)
             current_frame_detections.append(['car', track_det[0], track_det[1], track_det[2],
                                              track_det[3], track_det[4]])
+
+            if get_first_appearance:
+                if str(int(track_det[4])) not in first_appearance.keys():
+                    first_appearance[str(int(track_det[4]))] = ['car', track_det[0], track_det[1],
+                                                               track_det[2], track_det[3], capture.get(cv2.CAP_PROP_POS_FRAMES)]
 
             if visualize:
                 x = int(track_det[0])
@@ -80,10 +75,14 @@ def run_track(video_dir, dict_detections, visualize, wait_time=0):
                 cv2.putText(frame, str(track_det[4]), placement, font, font_scale, font_color, line_type)
 
         if visualize:
+            cv2.namedWindow('output', cv2.WINDOW_NORMAL)
             cv2.imshow('output', frame)
             cv2.waitKey(wait_time)
 
         whole_video_detections.append(current_frame_detections)
+
+    if get_first_appearance:
+        return whole_video_detections, first_appearance
 
     return whole_video_detections
 

@@ -17,6 +17,9 @@ def start_tracking(detections_path, gt_file_path, video_dir, tracking_type='kalm
     with open(gt_file_path) as f:
         gt_data = f.readlines()
 
+    cap = cv2.VideoCapture(video_dir)
+    n_total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
     # Read and prepare groundtruth data
     dict_gt_bboxes = dict()
     for line in gt_data:
@@ -27,14 +30,46 @@ def start_tracking(detections_path, gt_file_path, video_dir, tracking_type='kalm
         w = float(splits[4])
         h = float(splits[5])
         conf = float(splits[6])
-        bbox = ['car',x,y,w,h,conf]
+        id = int(splits[1])
+        bbox = ['car',x,y,w,h,conf,id]
         if frame_idx in dict_gt_bboxes.keys():
             dict_gt_bboxes[frame_idx].append(bbox)
         else:
             dict_gt_bboxes[frame_idx] = [bbox]
 
+    for n_frame in list(range(1, n_total_frames+1)):
+        if str(n_frame) not in dict_gt_bboxes.keys():
+            dict_gt_bboxes[str(n_frame)] = [[]]
+
+    gt_list_sorted_by_key = sorted(dict_gt_bboxes.items(), key=lambda kv: int(kv[0]))
+    gt_sorted = dict()
+    for element in gt_list_sorted_by_key:
+        gt_sorted[element[0]] = element[1]
+
+    #################CHECK GT
+    # list_check = list(gt_sorted.values())
+    # capture = cv2.VideoCapture(video_dir)
+    # frame_idx = 0
+    # while True:
+    #     success, frame = capture.read()
+    #     if not success:
+    #         break
+    #     frame_idx += 1
+    #     for ind_detection in list_check[int(frame_idx)-1]:
+    #         if len(ind_detection) != 0:
+    #             x = int(ind_detection[1])
+    #             y = int(ind_detection[2])
+    #             w = int(ind_detection[3])
+    #             h = int(ind_detection[4])
+    #             #frame = cv2.circle(frame,(x,y),20,(0,255,0),4)
+    #             frame = cv2.rectangle(frame, (x, y), (x+w, y+h), (0,255,0), 3)
+    #     cv2.namedWindow('output', cv2.WINDOW_NORMAL)
+    #     cv2.imshow("output", frame)
+    #     cv2.waitKey(1)
+    ###################################
     ###########################################
 
+    print(detections_path)
     with open(detections_path) as f:
         detections_data = f.readlines()
 
@@ -53,7 +88,19 @@ def start_tracking(detections_path, gt_file_path, video_dir, tracking_type='kalm
         else:
             detections_dict[frame_idx] = [bbox]
 
-    #################CHECK DETECTIONS
+    for n_frame in list(range(1, n_total_frames+1)):
+        if str(n_frame) not in detections_dict.keys():
+            detections_dict[str(n_frame)] = [[]]
+
+    det_list_sorted_by_key = sorted(detections_dict.items(), key=lambda kv: int(kv[0]))
+    det_sorted = dict()
+    for element in det_list_sorted_by_key:
+        det_sorted[element[0]] = element[1]
+
+    #################CHECK DETECTION
+    # check_array = list(range(1, n_total_frames+1))
+    # temp3 = [str(x) for x in check_array if str(x) not in list(detections_dict.keys())]
+    # print(temp3)
     # list_check = list(detections_dict.values())
     # capture = cv2.VideoCapture(video_dir)
     # frame_idx = 0
@@ -62,21 +109,24 @@ def start_tracking(detections_path, gt_file_path, video_dir, tracking_type='kalm
     #     if not success:
     #         break
     #     frame_idx += 1
-    #     for ind_detection in list_check[frame_idx - 1]:
-    #         x = int(ind_detection[0])
-    #         y = int(ind_detection[1])
-    #         w = int(ind_detection[2])
-    #         h = int(ind_detection[3])
-    #         #frame = cv2.circle(frame,(x,y),20,(0,255,0),4)
-    #         frame = cv2.rectangle(frame, (x, y), (x+w, y+h), (0,255,0), 3)
-    #     cv2.imshow("eo", frame)
+    #     for ind_detection in detections_dict.get(str(frame_idx)):
+    #         if len(ind_detection) != 0:
+    #             x = int(ind_detection[0])
+    #             y = int(ind_detection[1])
+    #             w = int(ind_detection[2])
+    #             h = int(ind_detection[3])
+    #             #frame = cv2.circle(frame,(x,y),20,(0,255,0),4)
+    #             frame = cv2.rectangle(frame, (x, y), (x+w, y+h), (0,255,0), 3)
+    #     cv2.namedWindow('output', cv2.WINDOW_NORMAL)
+    #     cv2.imshow("output", frame)
     #     cv2.waitKey()
     ###################################
 
+    tracked_detections = []
     if tracking_type.lower() == 'kalman':
-        tracked_detections = run_track(video_dir, detections_dict, visualize=visualize_bool)
+        tracked_detections = run_track(video_dir, det_sorted, visualize=visualize_bool)
     elif tracking_type.lower() == 'overlap':
-        tracked_detections, max_id = overlap_tracking(detections_dict)
+        tracked_detections, max_id = overlap_tracking(det_sorted)
         if visualize_bool:
             show_tracked_detections(tracked_detections, video_dir)
 
@@ -84,7 +134,7 @@ def start_tracking(detections_path, gt_file_path, video_dir, tracking_type='kalm
         print("THERE IS NOT TRACKER NAMED %s" % tracking_type)
         exit(0)
 
-    list_gt_bboxes = list(dict_gt_bboxes.values())
+    list_gt_bboxes = list(gt_sorted.values())
     summary = compute_idf1(list_gt_bboxes, tracked_detections)
     print(video_dir + "--------->"+str(summary))
 
@@ -111,11 +161,15 @@ if __name__ == "__main__":
 
                         if os.path.isdir(os.path.join(parent_dir, folder)) and folder.lower() == 'det':
                             _, _, detections = os.walk(os.path.join(parent_dir, folder)).__next__()
-                            detections_path = parent_dir + os.sep + folder + os.sep + detections[1]
+                            detections_path = parent_dir + os.sep + folder + os.sep + detections[2]
 
                     (dirpath, dirnames, filenames) = os.walk(parent_dir).__next__()
+                    print(os.path.join(parent_dir, filenames[1]))
 
                     # Filenames = roi.jpg, vdo.avi, calibration.txt
 
                     start_tracking(detections_path, gt_file_path, os.path.join(parent_dir, filenames[1]),
-                                    FLAGS.tracking_type, FLAGS.visualize)
+                                   FLAGS.tracking_type, FLAGS.visualize)
+                    # if "c014" in parent_dir:
+                    #     start_tracking(detections_path, gt_file_path, os.path.join(parent_dir, filenames[1]),
+                    #                 FLAGS.tracking_type, FLAGS.visualize)
