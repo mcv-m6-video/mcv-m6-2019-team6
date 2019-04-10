@@ -40,11 +40,11 @@ def read_file(path):
 
 
 def coarse2Fine(prev_frame, curr_frame, args):
-    prev_frame_gray = cv2.cvtColor(prev_frame, cv2.COLOR_BGR2GRAY)
-    curr_frame_gray = cv2.cvtColor(curr_frame, cv2.COLOR_BGR2GRAY)
+    prev_frame_gray_nc = cv2.cvtColor(prev_frame, cv2.COLOR_BGR2GRAY)
+    curr_frame_gray_nc = cv2.cvtColor(curr_frame, cv2.COLOR_BGR2GRAY)
 
-    prev_frame_gray = prev_frame_gray[:, :, np.newaxis]
-    curr_frame_gray = curr_frame_gray[:, :, np.newaxis]
+    prev_frame_gray = prev_frame_gray_nc[:, :, np.newaxis]
+    curr_frame_gray = curr_frame_gray_nc[:, :, np.newaxis]
 
     prev_array = np.asarray(prev_frame_gray)
     curr_array = np.asarray(curr_frame_gray)
@@ -62,7 +62,7 @@ def coarse2Fine(prev_frame, curr_frame, args):
     nOuterFPIterations = 7
     nInnerFPIterations = 1
     nSORIterations = 30
-    colType = 1  # 0 or default:RGB, 1:GRAY (but pass gray image with shape (h,w,1))
+    colType = 0  # 0 or default:RGB, 1:GRAY (but pass gray image with shape (h,w,1))
 
     s = time.time()
     u, v, im2W = pyflow.coarse2fine_flow(
@@ -91,6 +91,11 @@ def coarse2Fine(prev_frame, curr_frame, args):
         cv2.imwrite('output/pyflow.png', rgb)
         # cv2.imwrite('examples/car2Warped_new.jpg', im2W[:, :, ::-1] * 255)
         cv2.imshow("optical flow", rgb)
+        cv2.waitKey()
+
+        arrows = draw_flow(curr_frame_gray_nc, flow)
+        cv2.imwrite('output/pyflow_arrows.png', arrows)
+        cv2.imshow('pyflow', arrows)
         cv2.waitKey()
 
     return flow, flow_return
@@ -126,8 +131,11 @@ def farneback(prev_frame, curr_frame, args):
         # cv2.imwrite('examples/car2Warped_new.jpg', im2W[:, :, ::-1] * 255)
         cv2.imshow("optical flow", rgb)
         cv2.waitKey()
-        # cv2.imshow('Farneback', draw_flow(curr_gray, flow))
-        # cv2.waitKey()
+
+        arrows = draw_flow(curr_gray, flow)
+        cv2.imwrite('output/farneback_arrows.png', arrows)
+        cv2.imshow('Farneback', arrows)
+        cv2.waitKey()
 
     return flow, flow_return
 
@@ -145,48 +153,63 @@ def lk_algorithm(prev_frame, curr_frame, args):
     curr_gray = cv2.cvtColor(curr_frame, cv2.COLOR_BGR2GRAY)
     prev_gray = cv2.cvtColor(prev_frame, cv2.COLOR_BGR2GRAY)
 
+    s = time.time()
     p0 = cv2.goodFeaturesToTrack(prev_gray, mask=None, **feature_params)
 
     p1, st, err = cv2.calcOpticalFlowPyrLK(prev_gray, curr_gray, p0, None, **lk_params)
+    e = time.time()
+    print('Time Taken: %.2f seconds for image of size (%d, %d, %d)' % (
+        e - s, prev_gray.shape[0], prev_gray.shape[1], 1))
 
     # Select good points
     good_new = p1[st == 1]
     good_old = p0[st == 1]
 
-    mask = np.zeros_like(prev_gray)
+    motion = np.zeros([prev_gray.shape[0], prev_gray.shape[1], 3])
+    u = np.zeros([prev_gray.shape[0], prev_gray.shape[1]])
+    v = np.zeros([prev_gray.shape[0], prev_gray.shape[1]])
 
+    factor = 1.1
 
-    # motion = np.zeros([prev_gray.shape[0], prev_gray.shape[1], 3])
-    # for x in range(motion.shape[0]):
-    #     for y in range(motion.shape[1]):
-    #         check = (x,y)
-    #         for idx, good_point in enumerate(p0):
-    #             # print(int(good_point[0][0]))
-    #             # print(int(good_point[0][0]))
-    #             # print(check[0])
-    #             # print(check[1])
-    #             if int(good_point[0][0]) == check[0] and int(good_point[0][1]) == check[1]:
-    #                 motion[x, y] = np.array([good_point[0][0]-p1[idx][0][0], good_point[0][1]-p1[idx][0][1], 1])
-    #                 break
-    #             else:
-    #                 motion[x, y] = np.array([0,0,0])
-    # print("hola")
+    for idx, good_point in enumerate(good_old):
+        prev_frame_x = good_point[1]
+        prev_frame_y = good_point[0]
+        curr_frame_x = good_new[idx][1]
+        curr_frame_y = good_new[idx][0]
 
+        motion[int(prev_frame_x), int(prev_frame_y)] = np.array([curr_frame_x-prev_frame_x, curr_frame_y-prev_frame_y, 1])
+        u[int(prev_frame_x), int(prev_frame_y)] = np.array([(curr_frame_x - prev_frame_x)*factor])
+        v[int(prev_frame_x), int(prev_frame_y)] = np.array([(curr_frame_y - prev_frame_y)*factor])
 
+        cv2.arrowedLine(prev_frame, (prev_frame_y, prev_frame_x),
+                        (int(curr_frame_y*factor), int(curr_frame_x*factor)), (0, 0, 255), 1)
 
-
-
-    array_ones = np.ones((flow.shape[0], flow.shape[1]))
-    flow_return = np.ndarray((flow.shape[0], flow.shape[1], 3))
-    flow_return[:,:,0] = flow[:,:,0]
-    flow_return[:,:,1] = flow[:,:,1]
-    flow_return[:,:,2] = array_ones
+    flow = np.concatenate((u[..., None], v[..., None]), axis=2)
 
     if args.viz:
-        cv2.imshow('LK', draw_flow(curr_gray, flow))
+        cv2.imshow("lk", prev_frame)
+        cv2.imwrite('output/lk.png', prev_frame)
         cv2.waitKey()
 
-    return flow, flow_return
+
+        # print_flow = draw_flow(prev_gray, flow)
+        # cv2.imshow("lk", print_flow)
+        # cv2.waitKey()
+
+        # print_flow = np.concatenate((u[..., None], v[..., None]), axis=2)
+        # hsv = np.zeros(prev_frame.shape, dtype=np.uint8)
+        # hsv[:, :, 0] = 255
+        # hsv[:, :, 1] = 255
+        # mag, ang = cv2.cartToPolar(print_flow[..., 0], print_flow[..., 1])
+        # hsv[..., 0] = ang * 180 / np.pi / 2
+        # hsv[..., 2] = cv2.normalize(mag, None, 0, 255, cv2.NORM_MINMAX)
+        # rgb = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
+        # cv2.imwrite('output/lk.png', rgb)
+        # # cv2.imwrite('examples/car2Warped_new.jpg', im2W[:, :, ::-1] * 255)
+        # cv2.imshow("lk", rgb)
+        # cv2.waitKey()
+
+    return flow, motion
 
 
 def draw_flow(img, flow, step=8):

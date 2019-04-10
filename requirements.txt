@@ -1,0 +1,14 @@
+ml_metrics
+matplotlib
+numpy
+opencv-python
+pandas
+Pillow
+PyFunctional
+torch
+torchvision
+scikit-learn
+scikit-image
+scipy
+wget
+motmetrics
