@@ -18,7 +18,7 @@ classes_of_interest = ['car', 'bus', 'truck']
 min_confidence      = 0.65
 
 
-def run_track(video_dir, dict_detections, detector, size_threshold=8000, visualize=False):
+def run_track(video_dir, dict_detections, detector, size_threshold=8000, visualize=False, wait_time=0, get_first_appearance=False):
 
     capture = cv2.VideoCapture(video_dir)
 
@@ -26,6 +26,7 @@ def run_track(video_dir, dict_detections, detector, size_threshold=8000, visuali
     kalman_tracker = Sort()
 
     whole_video_detections = []
+    first_appearance = dict()
     while True:
         success, frame = capture.read()
         if not success:
@@ -50,32 +51,40 @@ def run_track(video_dir, dict_detections, detector, size_threshold=8000, visuali
 
         current_frame_detections = []
         for track_det in trackers:
-            track_det = track_det.astype(np.uint32)
+            track_det = track_det.astype(np.int64)
             current_frame_detections.append(['car', track_det[0], track_det[1], track_det[2],
                                              track_det[3], track_det[4]])
+
+            if get_first_appearance:
+                if str(int(track_det[4])) not in first_appearance.keys():
+                    first_appearance[str(int(track_det[4]))] = ['car', track_det[0], track_det[1],
+                                                               track_det[2], track_det[3], capture.get(cv2.CAP_PROP_POS_FRAMES)]
 
             if visualize:
                 x = int(track_det[0])
                 y = int(track_det[1])
                 w = int(track_det[2])
                 h = int(track_det[3])
-                if y < frame.shape[1] and h<frame.shape[1] and x<frame.shape[0] and w<frame.shape[0]:
-                    cv2.rectangle(frame, (x, y), (w, h), (0, 0, 255), 3)
+                # if y < frame.shape[1] and h<frame.shape[1] and x<frame.shape[0] and w<frame.shape[0]:
+                cv2.rectangle(frame, (x, y), (w, h), (0, 0, 255), 3)
 
-                    font = cv2.FONT_HERSHEY_DUPLEX
-                    placement = (w + 10, h + 10)
-                    font_scale = 1
-                    font_color = (0, 255, 0)
-                    line_type = 2
+                font = cv2.FONT_HERSHEY_DUPLEX
+                placement = (w + 10, h + 10)
+                font_scale = 1
+                font_color = (0, 255, 0)
+                line_type = 2
 
-                    cv2.putText(frame, str(track_det[4]), placement, font, font_scale, font_color, line_type)
+                cv2.putText(frame, str(track_det[4]), placement, font, font_scale, font_color, line_type)
 
         if visualize:
             cv2.namedWindow('output', cv2.WINDOW_NORMAL)
             cv2.imshow('output', frame)
-            cv2.waitKey(1)
+            cv2.waitKey(wait_time)
 
         whole_video_detections.append(current_frame_detections)
+
+    if get_first_appearance:
+        return whole_video_detections, first_appearance
 
     return whole_video_detections
 
