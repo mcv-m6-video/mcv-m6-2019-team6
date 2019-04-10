@@ -20,18 +20,6 @@ min_confidence      = 0.65
 
 def run_track(video_dir, dict_detections, visualize):
 
-    # dets = []
-    # for key,value in dict_detections.items():
-    #     bboxes_frame = []
-    #     for bbox in value:
-    #         x = int(bbox[0])
-    #         y = int(bbox[1])
-    #         w = int(bbox[2])
-    #         h = int(bbox[3])
-    #         to_append = [x,y,x+w,y+h]
-    #         bboxes_frame.append(to_append)
-    #     dets.append(bboxes_frame)
-    #
     capture = cv2.VideoCapture(video_dir)
 
     frame_idx = 0
@@ -48,12 +36,13 @@ def run_track(video_dir, dict_detections, visualize):
         to_track = []
         if detections is not None:
             for bbox in detections:
-                x = int(bbox[0])
-                y = int(bbox[1])
-                w = int(bbox[2])
-                h = int(bbox[3])
-                to_append = [x,y,x+w,y+h]
-                to_track.append(to_append)
+                if len(bbox) != 0:
+                    x = int(bbox[0])
+                    y = int(bbox[1])
+                    w = int(bbox[2])
+                    h = int(bbox[3])
+                    to_append = [x,y,x+w,y+h]
+                    to_track.append(to_append)
 
         trackers = kalman_tracker.update(np.array(to_track))
 
@@ -80,8 +69,9 @@ def run_track(video_dir, dict_detections, visualize):
                     cv2.putText(frame, str(track_det[4]), placement, font, font_scale, font_color, line_type)
 
         if visualize:
+            cv2.namedWindow('output', cv2.WINDOW_NORMAL)
             cv2.imshow('output', frame)
-            cv2.waitKey()
+            cv2.waitKey(1)
 
         whole_video_detections.append(current_frame_detections)
 

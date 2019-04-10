@@ -13,7 +13,6 @@ def bbox_iou(src_bboxA, src_bboxB):
     bboxA = copy.deepcopy(src_bboxA)
     bboxB = copy.deepcopy(src_bboxB)
 
-
     bboxA[2] = bboxA[0] + bboxA[2]
     bboxA[3] = bboxA[1] + bboxA[3]
     bboxB[2] = bboxB[0] + bboxB[2]
@@ -75,18 +74,26 @@ def compute_idf1(list_gt_bboxes, tracked_detections):
         mm_gt_bboxes = []
 
         for gt_bbox in gt_elements_frame:
-            # mm_gt_bboxes.append([(gt_bbox[1]+gt_bbox[3])/2, (gt_bbox[2]+gt_bbox[4])/2, gt_bbox[3]-gt_bbox[1],
-            #                      gt_bbox[4]-gt_bbox[2]])
-            mm_gt_bboxes.append([gt_bbox[2], gt_bbox[1], gt_bbox[3], gt_bbox[4]])
+            if len(gt_bbox) != 0:
+                # mm_gt_bboxes.append([(gt_bbox[1]+gt_bbox[3])/2, (gt_bbox[2]+gt_bbox[4])/2, gt_bbox[3]-gt_bbox[1],
+                #                      gt_bbox[4]-gt_bbox[2]])
+                mm_gt_bboxes.append([gt_bbox[2], gt_bbox[1], gt_bbox[3], gt_bbox[4]])
 
-            gt_ids.append(gt_bbox[-1])
+                gt_ids.append(gt_bbox[-1])
+            else:
+                mm_gt_bboxes.append([None, None, None, None])
+                gt_ids.append(None)
 
         for det_bbox in det_elements_frame:
-            # mm_det_bboxes.append([(det_bbox[1]+det_bbox[3])/2, (det_bbox[2]+det_bbox[4])/2, det_bbox[3]-det_bbox[1],
-            #                      det_bbox[4]-det_bbox[2]])
-            mm_det_bboxes.append([det_bbox[2], det_bbox[1], det_bbox[3], det_bbox[4]])
+            if len(det_bbox) != 0:
+                # mm_det_bboxes.append([(det_bbox[1]+det_bbox[3])/2, (det_bbox[2]+det_bbox[4])/2, det_bbox[3]-det_bbox[1],
+                #                      det_bbox[4]-det_bbox[2]])
+                mm_det_bboxes.append([det_bbox[2], det_bbox[1], det_bbox[3], det_bbox[4]])
 
-            det_ids.append(det_bbox[-1])
+                det_ids.append(det_bbox[-1])
+            else:
+                mm_det_bboxes.append([None, None, None, None])
+                det_ids.append(None)
 
         distances_gt_det = mm.distances.iou_matrix(mm_gt_bboxes, mm_det_bboxes, max_iou=1.)
         acc.update(gt_ids, det_ids, distances_gt_det)
