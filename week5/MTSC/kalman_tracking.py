@@ -6,7 +6,7 @@ import pickle
 import numpy as np
 import cv2
 from sort import Sort
-from utils import read_xml_annotations, compute_idf1
+from utils import read_xml_annotations, compute_idf1, check_size_bbox
 
 parser   = argparse.ArgumentParser()
 
@@ -18,7 +18,7 @@ classes_of_interest = ['car', 'bus', 'truck']
 min_confidence      = 0.65
 
 
-def run_track(video_dir, dict_detections, visualize):
+def run_track(video_dir, dict_detections, detector, size_threshold=8000, visualize=False):
 
     capture = cv2.VideoCapture(video_dir)
 
@@ -41,8 +41,10 @@ def run_track(video_dir, dict_detections, visualize):
                     y = int(bbox[1])
                     w = int(bbox[2])
                     h = int(bbox[3])
-                    to_append = [x,y,x+w,y+h]
-                    to_track.append(to_append)
+                    size_bbox = check_size_bbox([x,y,w,h])
+                    if size_bbox > size_threshold:
+                        to_append = [x,y,x+w,y+h]
+                        to_track.append(to_append)
 
         trackers = kalman_tracker.update(np.array(to_track))
 

@@ -12,7 +12,7 @@ import argparse
 import pickle
 import copy
 from matplotlib import colors
-from utils import bbox_iou, read_xml_annotations, compute_idf1
+from utils import bbox_iou, read_xml_annotations, compute_idf1, check_size_bbox
 import motmetrics as mm
 
 parser = argparse.ArgumentParser()
@@ -22,7 +22,7 @@ parser.add_argument('--annotations_dir', type=str, default='./annotations/', hel
 parser.add_argument('--visualize', type=bool, default=False, help='')
 
 
-def overlap_tracking(sorted_detections, threshold=0.4):
+def overlap_tracking(sorted_detections, size_threshold = 8000, threshold=0.5):
 
     assigned_id = 0
     whole_detections = dict()
@@ -37,7 +37,7 @@ def overlap_tracking(sorted_detections, threshold=0.4):
                     label = 'car'
                     bbox = [label]+bbox
                     previous_dect = whole_detections.get(str(int(key) - 1))
-                    if len(previous_dect) > 0 and len(previous_dect[0]) != 0:
+                    if len(previous_dect):
                         scores_and_ids = [bbox_iou(bbox[1:], prev_frame_bbox[1:]) for prev_frame_bbox in previous_dect]
                         max_in_list = max(scores_and_ids, key=lambda item: item[0])
                         max_score = max_in_list[0]
@@ -45,20 +45,32 @@ def overlap_tracking(sorted_detections, threshold=0.4):
                         track_id = max_in_list[1][-1]
 
                         # Check if the new bbox is more and less the same size as the previous one
-                        current_size = (bbox[1]+bbox[4])*(bbox[2]+bbox[3])
-                        prev_size = (match_prev_bbox[0]+match_prev_bbox[3])*(match_prev_bbox[1]+match_prev_bbox[2])
+                        current_size = bbox[3]*bbox[4]
+                        prev_size = match_prev_bbox[2]*match_prev_bbox[3]
 
                         if max_score >= threshold and current_size >= 0.8*prev_size:
-                            bbox.append(track_id)
-                            current_frame_detections.append(bbox)
+                            size_bbox = check_size_bbox(bbox[1:5])
+                            if size_bbox >= size_threshold:
+                                bbox.append(track_id)
+                                current_frame_detections.append(bbox)
+                            else:
+                                current_frame_detections.append([])
                         else:
+                            size_bbox = check_size_bbox(bbox[1:5])
+                            if size_bbox >= size_threshold:
+                                bbox.append(assigned_id)
+                                current_frame_detections.append(bbox)
+                                assigned_id += 1
+                            else:
+                                current_frame_detections.append([])
+                    else:
+                        size_bbox = check_size_bbox(bbox[1:5])
+                        if size_bbox >= size_threshold:
                             bbox.append(assigned_id)
                             current_frame_detections.append(bbox)
                             assigned_id += 1
-                    else:
-                        bbox.append(assigned_id)
-                        current_frame_detections.append(bbox)
-                        assigned_id += 1
+                        else:
+                            current_frame_detections.append([])
                 else:
                     current_frame_detections.append([])
 
@@ -75,8 +87,12 @@ def overlap_tracking(sorted_detections, threshold=0.4):
                     bbox = [label]+bbox
                     bbox.append(assigned_id)
 
-                    current_frame_detections.append(bbox)
-                    assigned_id += 1
+                    size_bbox = check_size_bbox(bbox[1:5])
+                    if size_bbox > size_threshold:
+                        current_frame_detections.append(bbox)
+                        assigned_id += 1
+                    else:
+                        current_frame_detections.append([])
                 else:
                     current_frame_detections.append([])
             if key in whole_detections.keys():
@@ -87,7 +103,7 @@ def overlap_tracking(sorted_detections, threshold=0.4):
     return list(whole_detections.values()), assigned_id
 
 
-def show_tracked_detections(tracked_detections, video_dir):
+def show_tracked_detections(tracked_detections, video_dir, detector):
     capture = cv2.VideoCapture(video_dir)
     frame_idx = 0
 
@@ -116,9 +132,14 @@ def show_tracked_detections(tracked_detections, video_dir):
                 frame = cv2.rectangle(frame, (x, y), (x+w,y+h), dict_colors[ind_detection[-1]], 3)
                 frame = cv2.putText(frame, str(ind_detection[-1]), (x-5, y-5),
                                     cv2.FONT_HERSHEY_COMPLEX, 2, (255, 255, 255), 2, cv2.LINE_AA)
-                frame = cv2.putText(frame, str(frame_idx), (50,50), cv2.FONT_HERSHEY_COMPLEX, 2, (0, 255, 0), 2, cv2.LINE_AA)
 
-        # cv2.imwrite('tracking_videos/overlap/image%04i.jpg' % frame_idx, frame)
+        frame = cv2.putText(frame, str(frame_idx), (50, 50), cv2.FONT_HERSHEY_COMPLEX, 2, (0, 255, 0), 2, cv2.LINE_AA)
+
+        # path_to_save = '/home/manuel/Desktop/CLASS/M6/final_presentation/saved_frames/'+detector+os.sep
+        # if not os.path.exists(path_to_save):
+        #     os.makedirs(path_to_save)
+        # cv2.imwrite(path_to_save+'frame%04i.jpg' % frame_idx, frame)
+
         cv2.namedWindow('output', cv2.WINDOW_NORMAL)
         cv2.imshow('output', frame)
         cv2.waitKey(1)
