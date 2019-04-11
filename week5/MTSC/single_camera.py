@@ -11,6 +11,8 @@ parser.add_argument('--tracking_type', type=str, default='overlap', help='')
 parser.add_argument('--visualize', action='store_true', help='')
 path_sequences = '../../../aic19-track1-mtmc-train/'
 
+filtered_size = 8000
+
 
 def start_tracking(detections_path, gt_file_path, video_dir, tracking_type='kalman', visualize_bool=False):
 
@@ -123,12 +125,14 @@ def start_tracking(detections_path, gt_file_path, video_dir, tracking_type='kalm
     ###################################
 
     tracked_detections = []
+    nn_detection = detections_path.split("/")[-1].split(".")[0]
     if tracking_type.lower() == 'kalman':
-        tracked_detections = run_track(video_dir, det_sorted, visualize=visualize_bool)
+        tracked_detections = run_track(video_dir, det_sorted, nn_detection,
+                                       size_threshold=filtered_size, visualize=visualize_bool)
     elif tracking_type.lower() == 'overlap':
-        tracked_detections, max_id = overlap_tracking(det_sorted)
+        tracked_detections, max_id = overlap_tracking(det_sorted, size_threshold=filtered_size, threshold=0.5)
         if visualize_bool:
-            show_tracked_detections(tracked_detections, video_dir)
+            show_tracked_detections(tracked_detections, video_dir, nn_detection)
 
     else:
         print("THERE IS NOT TRACKER NAMED %s" % tracking_type)
@@ -161,7 +165,7 @@ if __name__ == "__main__":
 
                         if os.path.isdir(os.path.join(parent_dir, folder)) and folder.lower() == 'det':
                             _, _, detections = os.walk(os.path.join(parent_dir, folder)).__next__()
-                            detections_path = parent_dir + os.sep + folder + os.sep + detections[2]
+                            detections_path = parent_dir + os.sep + folder + os.sep + detections[1]
 
                     (dirpath, dirnames, filenames) = os.walk(parent_dir).__next__()
                     print(os.path.join(parent_dir, filenames[1]))

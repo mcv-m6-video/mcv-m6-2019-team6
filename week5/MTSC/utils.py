@@ -13,6 +13,8 @@ def bbox_iou(src_bboxA, src_bboxB):
     bboxA = copy.deepcopy(src_bboxA)
     bboxB = copy.deepcopy(src_bboxB)
 
+    if len(bboxB) == 0 or len(bboxA) == 0:
+        return 0.0, [0, 0, 0, 0]
     bboxA[2] = bboxA[0] + bboxA[2]
     bboxA[3] = bboxA[1] + bboxA[3]
     bboxB[2] = bboxB[0] + bboxB[2]
@@ -101,3 +103,12 @@ def compute_idf1(list_gt_bboxes, tracked_detections):
     mh = mm.metrics.create()
     summary = mh.compute(acc, metrics=['idf1'], name='acc')
     return summary
+
+
+def check_size_bbox(bbox):
+    """bbox = x,y,w,h"""
+    x = bbox[0]
+    y = bbox[1]
+    w = bbox[2]
+    h = bbox[3]
+    return w*h
