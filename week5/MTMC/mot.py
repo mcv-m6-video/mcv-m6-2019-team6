@@ -13,8 +13,8 @@ def compute_scores(gt, detections):
             gt_bboxes = []
             gt_ids = []
 
-        detection_bboxes = [[detection[1], detection[3] - detection[1],
-                             detection[2], detection[4] - detection[2]] for detection in frame_detections]
+        detection_bboxes = [[detection[1], detection[2], detection[3] - detection[1],
+                             detection[4] - detection[2]] for detection in frame_detections]
         detection_ids = [detection[5] for detection in frame_detections]
 
         distances = mm.distances.iou_matrix(gt_bboxes, detection_bboxes)

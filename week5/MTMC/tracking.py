@@ -9,7 +9,7 @@ from kalman_tracking import run_track
 from utils import compute_idf1
 from histogram import compute_histogram,compare_histogram_blocks
 import matplotlib.pyplot as plt
-from histogram_tracking import get_detections
+# from histogram_tracking import get_detections
 import random
 
 
