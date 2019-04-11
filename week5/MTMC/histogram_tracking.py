@@ -109,13 +109,13 @@ if __name__ == "__main__":
                         _, frame = capture.read()
                         patch = frame[max(0, bbox[1]):max(0, bbox[3]), max(0, bbox[0]):max(0, bbox[2]), :]
 
-                        max_score = -999999999999
+                        min_score = 999999999999
                         new_id = -1
                         for key2 in reference_histograms:
                             current_hist = np.array(compute_histogram(patch))
                             score = compare_histogram_blocks(reference_histograms[key2], current_hist)
-                            if score > max_score:
-                                max_score = score
+                            if score < min_score:
+                                min_score = score
                                 new_id = key2
                         id_correspondence[str(key)] = new_id
                     except:  # because fuck you opencv

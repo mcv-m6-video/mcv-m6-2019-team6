@@ -23,15 +23,3 @@ def compute_scores(gt, detections):
     summary = mh.compute(mot, metrics=['num_frames', 'idf1', 'idp', 'idr', 'motp', 'mota'], name='acc')
     print(summary)
 
-
-
-
-
-
-
-
-
-
-
-
-
