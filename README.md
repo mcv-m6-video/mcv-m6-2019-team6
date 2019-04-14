@@ -87,6 +87,7 @@ The idea was to combine maximum overlap tracking algorithm with velocity vector 
 
 ## Week 5 Multi-target camera tracking
 [Presentation (Google Slides)](https://docs.google.com/presentation/d/1LHWeY29m8-C5rvV6BteK7FbgwSNMwNfNWzQ30UO-vA4/edit?usp=sharing)
+
 [Presentation (PDF)](https://drive.google.com/file/d/1XyKFDFdpQUAI75oSaB303Ws4HLatY1bO/view?usp=sharing)
 #### Multi-target single camera tracking (MTSC)
 #### Multi-target single camera tracking (MTMC)
