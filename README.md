@@ -5,6 +5,8 @@
 # Video Surveillance for Road Traffic Monitoring
 
  This repository contains information about the work done during the project of Module 6 of [Master in Computer Vision](http://pagines.uab.cat/mcv/) 2018.
+ 
+ [Technical report (WEEK 5)](https://www.overleaf.com/6981979187nsnzvjtwgvys)
 
  ## Usage
 
